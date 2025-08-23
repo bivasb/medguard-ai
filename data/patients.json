@@ -1,0 +1,281 @@
+{
+  "patients": [
+    {
+      "patient_id": "P001",
+      "name": "Eleanor Martinez",
+      "age": 72,
+      "gender": "F",
+      "weight_kg": 68,
+      "height_cm": 162,
+      "allergies": ["penicillin", "sulfa"],
+      "conditions": [
+        {
+          "condition": "Atrial Fibrillation",
+          "diagnosed": "2019-03-15",
+          "status": "active"
+        },
+        {
+          "condition": "Hypertension",
+          "diagnosed": "2015-06-22",
+          "status": "controlled"
+        },
+        {
+          "condition": "Type 2 Diabetes",
+          "diagnosed": "2018-11-08",
+          "status": "active"
+        }
+      ],
+      "current_medications": [
+        {
+          "drug_name": "warfarin",
+          "dose": "5mg",
+          "frequency": "daily",
+          "started": "2019-04-01",
+          "purpose": "anticoagulation"
+        },
+        {
+          "drug_name": "metformin",
+          "dose": "1000mg",
+          "frequency": "twice daily",
+          "started": "2018-12-01",
+          "purpose": "diabetes management"
+        },
+        {
+          "drug_name": "lisinopril",
+          "dose": "10mg",
+          "frequency": "daily",
+          "started": "2015-07-01",
+          "purpose": "blood pressure"
+        }
+      ],
+      "lab_values": {
+        "INR": {
+          "value": 2.8,
+          "date": "2024-01-15",
+          "target_range": "2.0-3.0"
+        },
+        "creatinine": {
+          "value": 1.1,
+          "date": "2024-01-10",
+          "unit": "mg/dL"
+        },
+        "eGFR": {
+          "value": 65,
+          "date": "2024-01-10",
+          "unit": "mL/min/1.73m²"
+        }
+      }
+    },
+    {
+      "patient_id": "P002",
+      "name": "James Chen",
+      "age": 45,
+      "gender": "M",
+      "weight_kg": 82,
+      "height_cm": 175,
+      "allergies": [],
+      "conditions": [
+        {
+          "condition": "Rheumatoid Arthritis",
+          "diagnosed": "2020-02-14",
+          "status": "active"
+        },
+        {
+          "condition": "GERD",
+          "diagnosed": "2021-09-30",
+          "status": "controlled"
+        }
+      ],
+      "current_medications": [
+        {
+          "drug_name": "methotrexate",
+          "dose": "15mg",
+          "frequency": "weekly",
+          "started": "2020-03-01",
+          "purpose": "rheumatoid arthritis"
+        },
+        {
+          "drug_name": "folic acid",
+          "dose": "1mg",
+          "frequency": "daily",
+          "started": "2020-03-01",
+          "purpose": "supplement with methotrexate"
+        },
+        {
+          "drug_name": "omeprazole",
+          "dose": "20mg",
+          "frequency": "daily",
+          "started": "2021-10-15",
+          "purpose": "GERD"
+        }
+      ],
+      "lab_values": {
+        "ALT": {
+          "value": 28,
+          "date": "2024-01-08",
+          "unit": "U/L"
+        },
+        "creatinine": {
+          "value": 0.9,
+          "date": "2024-01-08",
+          "unit": "mg/dL"
+        }
+      }
+    },
+    {
+      "patient_id": "P003",
+      "name": "Sarah Johnson",
+      "age": 28,
+      "gender": "F",
+      "weight_kg": 58,
+      "height_cm": 165,
+      "allergies": ["aspirin", "NSAIDs"],
+      "conditions": [
+        {
+          "condition": "Depression",
+          "diagnosed": "2022-05-20",
+          "status": "improving"
+        },
+        {
+          "condition": "Migraine",
+          "diagnosed": "2019-08-12",
+          "status": "active"
+        }
+      ],
+      "current_medications": [
+        {
+          "drug_name": "sertraline",
+          "dose": "100mg",
+          "frequency": "daily",
+          "started": "2022-06-01",
+          "purpose": "depression"
+        },
+        {
+          "drug_name": "sumatriptan",
+          "dose": "50mg",
+          "frequency": "as needed",
+          "started": "2019-09-01",
+          "purpose": "migraine"
+        }
+      ],
+      "lab_values": {}
+    },
+    {
+      "patient_id": "P004",
+      "name": "Robert Wilson",
+      "age": 65,
+      "gender": "M",
+      "weight_kg": 90,
+      "height_cm": 180,
+      "allergies": ["codeine"],
+      "conditions": [
+        {
+          "condition": "Coronary Artery Disease",
+          "diagnosed": "2021-11-05",
+          "status": "stable"
+        },
+        {
+          "condition": "Hyperlipidemia",
+          "diagnosed": "2018-03-22",
+          "status": "controlled"
+        }
+      ],
+      "current_medications": [
+        {
+          "drug_name": "aspirin",
+          "dose": "81mg",
+          "frequency": "daily",
+          "started": "2021-11-20",
+          "purpose": "antiplatelet"
+        },
+        {
+          "drug_name": "atorvastatin",
+          "dose": "40mg",
+          "frequency": "daily",
+          "started": "2018-04-01",
+          "purpose": "cholesterol"
+        },
+        {
+          "drug_name": "metoprolol",
+          "dose": "50mg",
+          "frequency": "twice daily",
+          "started": "2021-11-20",
+          "purpose": "heart rate control"
+        },
+        {
+          "drug_name": "clopidogrel",
+          "dose": "75mg",
+          "frequency": "daily",
+          "started": "2021-11-20",
+          "purpose": "antiplatelet"
+        }
+      ],
+      "lab_values": {
+        "LDL": {
+          "value": 85,
+          "date": "2024-01-05",
+          "unit": "mg/dL"
+        },
+        "HDL": {
+          "value": 45,
+          "date": "2024-01-05",
+          "unit": "mg/dL"
+        }
+      }
+    },
+    {
+      "patient_id": "P005",
+      "name": "Maria Rodriguez",
+      "age": 55,
+      "gender": "F",
+      "weight_kg": 75,
+      "height_cm": 158,
+      "allergies": [],
+      "conditions": [
+        {
+          "condition": "Chronic Kidney Disease Stage 3",
+          "diagnosed": "2022-08-15",
+          "status": "stable"
+        },
+        {
+          "condition": "Hypertension",
+          "diagnosed": "2017-04-10",
+          "status": "controlled"
+        }
+      ],
+      "current_medications": [
+        {
+          "drug_name": "amlodipine",
+          "dose": "5mg",
+          "frequency": "daily",
+          "started": "2017-05-01",
+          "purpose": "blood pressure"
+        },
+        {
+          "drug_name": "furosemide",
+          "dose": "40mg",
+          "frequency": "daily",
+          "started": "2022-09-01",
+          "purpose": "edema management"
+        }
+      ],
+      "lab_values": {
+        "creatinine": {
+          "value": 1.8,
+          "date": "2024-01-12",
+          "unit": "mg/dL"
+        },
+        "eGFR": {
+          "value": 38,
+          "date": "2024-01-12",
+          "unit": "mL/min/1.73m²"
+        },
+        "potassium": {
+          "value": 4.2,
+          "date": "2024-01-12",
+          "unit": "mEq/L"
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,201 @@
+{
+  "medical_histories": [
+    {
+      "patient_id": "P001",
+      "hospitalizations": [
+        {
+          "date": "2019-03-12",
+          "reason": "Atrial Fibrillation diagnosis",
+          "duration_days": 3,
+          "procedures": ["ECG", "Echocardiogram", "Holter monitoring"],
+          "complications": "none"
+        },
+        {
+          "date": "2020-07-18",
+          "reason": "Diabetic ketoacidosis",
+          "duration_days": 2,
+          "procedures": ["IV insulin therapy"],
+          "complications": "none"
+        }
+      ],
+      "surgeries": [
+        {
+          "date": "2016-09-15",
+          "procedure": "Knee replacement",
+          "complications": "none",
+          "recovery_weeks": 8
+        }
+      ],
+      "adverse_drug_reactions": [
+        {
+          "date": "2019-04-05",
+          "drug": "aspirin",
+          "reaction": "GI bleeding",
+          "severity": "moderate",
+          "action_taken": "discontinued, switched to warfarin"
+        }
+      ],
+      "family_history": {
+        "cardiovascular": ["Father: MI at age 68", "Mother: Hypertension"],
+        "diabetes": ["Sister: Type 2 Diabetes"],
+        "cancer": [],
+        "other": ["Brother: Chronic kidney disease"]
+      },
+      "smoking_history": {
+        "status": "former",
+        "quit_date": "2010-01-01",
+        "pack_years": 20
+      },
+      "alcohol_use": "occasional",
+      "medication_adherence": "excellent",
+      "recent_changes": [
+        {
+          "date": "2024-01-10",
+          "change": "Warfarin dose adjusted from 4mg to 5mg",
+          "reason": "Low INR (1.8)"
+        }
+      ]
+    },
+    {
+      "patient_id": "P002",
+      "hospitalizations": [],
+      "surgeries": [],
+      "adverse_drug_reactions": [
+        {
+          "date": "2020-04-12",
+          "drug": "sulfasalazine",
+          "reaction": "rash and fever",
+          "severity": "moderate",
+          "action_taken": "discontinued, switched to methotrexate"
+        }
+      ],
+      "family_history": {
+        "cardiovascular": [],
+        "diabetes": ["Mother: Type 2 Diabetes"],
+        "cancer": ["Father: Prostate cancer"],
+        "other": ["Sister: Rheumatoid Arthritis"]
+      },
+      "smoking_history": {
+        "status": "never"
+      },
+      "alcohol_use": "moderate (2-3 drinks/week)",
+      "medication_adherence": "good",
+      "recent_changes": []
+    },
+    {
+      "patient_id": "P003",
+      "hospitalizations": [
+        {
+          "date": "2022-05-18",
+          "reason": "Suicide attempt",
+          "duration_days": 5,
+          "procedures": ["Psychiatric evaluation"],
+          "complications": "none"
+        }
+      ],
+      "surgeries": [],
+      "adverse_drug_reactions": [
+        {
+          "date": "2020-03-22",
+          "drug": "ibuprofen",
+          "reaction": "severe urticaria",
+          "severity": "severe",
+          "action_taken": "ER visit, treated with epinephrine"
+        }
+      ],
+      "family_history": {
+        "cardiovascular": [],
+        "diabetes": [],
+        "cancer": [],
+        "other": ["Mother: Depression", "Aunt: Bipolar disorder"]
+      },
+      "smoking_history": {
+        "status": "never"
+      },
+      "alcohol_use": "rare",
+      "medication_adherence": "improving",
+      "recent_changes": [
+        {
+          "date": "2023-11-15",
+          "change": "Sertraline increased from 50mg to 100mg",
+          "reason": "Partial response"
+        }
+      ]
+    },
+    {
+      "patient_id": "P004",
+      "hospitalizations": [
+        {
+          "date": "2021-11-03",
+          "reason": "STEMI",
+          "duration_days": 5,
+          "procedures": ["PCI with stent placement", "Cardiac catheterization"],
+          "complications": "none"
+        }
+      ],
+      "surgeries": [
+        {
+          "date": "2021-11-03",
+          "procedure": "Coronary stent placement",
+          "complications": "none",
+          "recovery_weeks": 4
+        }
+      ],
+      "adverse_drug_reactions": [],
+      "family_history": {
+        "cardiovascular": ["Father: MI at age 62", "Brother: Hypertension"],
+        "diabetes": [],
+        "cancer": ["Mother: Breast cancer"],
+        "other": []
+      },
+      "smoking_history": {
+        "status": "former",
+        "quit_date": "2021-11-10",
+        "pack_years": 30
+      },
+      "alcohol_use": "minimal",
+      "medication_adherence": "excellent",
+      "recent_changes": []
+    },
+    {
+      "patient_id": "P005",
+      "hospitalizations": [
+        {
+          "date": "2022-08-10",
+          "reason": "Acute kidney injury",
+          "duration_days": 4,
+          "procedures": ["Dialysis", "Renal ultrasound"],
+          "complications": "progressed to CKD"
+        }
+      ],
+      "surgeries": [],
+      "adverse_drug_reactions": [
+        {
+          "date": "2022-10-05",
+          "drug": "lisinopril",
+          "reaction": "hyperkalemia",
+          "severity": "moderate",
+          "action_taken": "discontinued, switched to amlodipine"
+        }
+      ],
+      "family_history": {
+        "cardiovascular": ["Mother: Hypertension"],
+        "diabetes": ["Father: Type 2 Diabetes"],
+        "cancer": [],
+        "other": ["Brother: ESRD on dialysis"]
+      },
+      "smoking_history": {
+        "status": "never"
+      },
+      "alcohol_use": "none",
+      "medication_adherence": "good",
+      "recent_changes": [
+        {
+          "date": "2023-12-20",
+          "change": "Started potassium restriction diet",
+          "reason": "Rising potassium levels"
+        }
+      ]
+    }
+  ]
+}

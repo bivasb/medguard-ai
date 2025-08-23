@@ -1,0 +1,35 @@
+{
+  "name": "medguard-ai",
+  "version": "1.0.0",
+  "description": "MedGuard AI - Drug Interaction Checker using LangGraph and MCP servers",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js",
+    "mcp:start": "node src/mcp/server.js",
+    "test": "node src/test/test-scenarios.js"
+  },
+  "dependencies": {
+    "@langchain/core": "^0.3.22",
+    "@langchain/langgraph": "^0.2.41",
+    "@langchain/anthropic": "^0.3.14",
+    "@modelcontextprotocol/sdk": "^1.0.4",
+    "express": "^4.21.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "node-fetch": "^3.3.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2"
+  },
+  "keywords": [
+    "medical",
+    "drug-interaction",
+    "langraph",
+    "mcp",
+    "healthcare"
+  ],
+  "author": "",
+  "license": "MIT"
+}

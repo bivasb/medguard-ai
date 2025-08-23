@@ -1,0 +1,252 @@
+{
+  "scenarios": [
+    {
+      "scenario_id": "S001",
+      "title": "Critical Bleeding Risk - Warfarin + Aspirin",
+      "patient_id": "P001",
+      "description": "Elderly patient on warfarin for AFib, nurse about to administer aspirin for new onset headache",
+      "drugs_to_check": ["warfarin", "aspirin"],
+      "context": {
+        "clinical_situation": "Patient complaining of severe headache, requesting pain relief",
+        "nurse_action": "About to administer 325mg aspirin",
+        "time_pressure": "high",
+        "current_INR": 2.8
+      },
+      "expected_result": {
+        "risk_level": "DANGER",
+        "primary_concern": "Major bleeding risk",
+        "explanation": "Combining warfarin with aspirin significantly increases bleeding risk. Patient's INR is already at upper limit (2.8). Risk of intracranial hemorrhage increased 2-3 fold.",
+        "recommendations": [
+          "DO NOT administer aspirin",
+          "Consider acetaminophen for pain relief",
+          "Check for signs of bleeding",
+          "Notify physician immediately"
+        ]
+      },
+      "teaching_points": [
+        "Warfarin + NSAIDs/Aspirin is a high-risk combination",
+        "Always check INR before adding medications",
+        "Alternative pain management is crucial for anticoagulated patients"
+      ]
+    },
+    {
+      "scenario_id": "S002",
+      "title": "Methotrexate Toxicity Risk",
+      "patient_id": "P002",
+      "description": "Patient with RA on methotrexate, prescribed trimethoprim for UTI",
+      "drugs_to_check": ["methotrexate", "trimethoprim"],
+      "context": {
+        "clinical_situation": "Patient diagnosed with UTI, needs antibiotic",
+        "nurse_action": "About to administer first dose of trimethoprim",
+        "time_pressure": "moderate"
+      },
+      "expected_result": {
+        "risk_level": "DANGER",
+        "primary_concern": "Methotrexate toxicity",
+        "explanation": "Trimethoprim inhibits methotrexate elimination, can cause severe bone marrow suppression, mucositis, and hepatotoxicity",
+        "recommendations": [
+          "DO NOT administer trimethoprim",
+          "Consider alternative antibiotics (ciprofloxacin, cephalexin)",
+          "Monitor CBC if interaction unavoidable",
+          "May need to hold methotrexate"
+        ]
+      },
+      "teaching_points": [
+        "Methotrexate has many serious drug interactions",
+        "Always verify antibiotics with immunosuppressants",
+        "Folate antagonists particularly dangerous together"
+      ]
+    },
+    {
+      "scenario_id": "S003",
+      "title": "Serotonin Syndrome Risk",
+      "patient_id": "P003",
+      "description": "Patient on sertraline for depression, prescribed tramadol for post-procedure pain",
+      "drugs_to_check": ["sertraline", "tramadol"],
+      "context": {
+        "clinical_situation": "Post dental procedure, severe pain",
+        "nurse_action": "About to give tramadol 50mg",
+        "time_pressure": "moderate"
+      },
+      "expected_result": {
+        "risk_level": "WARNING",
+        "primary_concern": "Serotonin syndrome risk",
+        "explanation": "Both drugs increase serotonin levels. Risk of serotonin syndrome with symptoms: confusion, agitation, tremor, sweating, hyperthermia",
+        "recommendations": [
+          "Use lowest effective dose of tramadol",
+          "Monitor for serotonin syndrome symptoms",
+          "Consider alternative pain medication",
+          "Educate patient on warning signs"
+        ]
+      },
+      "teaching_points": [
+        "SSRIs interact with many pain medications",
+        "Serotonin syndrome can be life-threatening",
+        "Watch for mental status changes, tremor, sweating"
+      ]
+    },
+    {
+      "scenario_id": "S004",
+      "title": "Dual Antiplatelet Bleeding Risk",
+      "patient_id": "P004",
+      "description": "Post-MI patient on dual antiplatelet therapy, needs pain management",
+      "drugs_to_check": ["aspirin", "clopidogrel", "ibuprofen"],
+      "context": {
+        "clinical_situation": "Patient with new back pain requesting ibuprofen",
+        "nurse_action": "Considering ibuprofen 600mg",
+        "time_pressure": "low"
+      },
+      "expected_result": {
+        "risk_level": "DANGER",
+        "primary_concern": "Major bleeding risk + reduced antiplatelet effect",
+        "explanation": "Triple therapy significantly increases GI bleeding risk. Ibuprofen may also reduce aspirin's cardioprotective effect",
+        "recommendations": [
+          "AVOID ibuprofen",
+          "Use acetaminophen for pain",
+          "Consider topical NSAIDs",
+          "If NSAID necessary, add PPI and monitor closely"
+        ]
+      },
+      "teaching_points": [
+        "Dual antiplatelet therapy requires careful medication selection",
+        "NSAIDs can interfere with aspirin's antiplatelet effect",
+        "GI bleeding risk multiplies with multiple antiplatelets"
+      ]
+    },
+    {
+      "scenario_id": "S005",
+      "title": "Hyperkalemia Risk in CKD",
+      "patient_id": "P005",
+      "description": "CKD patient needs potassium-sparing diuretic for worsening edema",
+      "drugs_to_check": ["spironolactone", "lisinopril"],
+      "context": {
+        "clinical_situation": "Worsening lower extremity edema",
+        "nurse_action": "MD ordered spironolactone 25mg daily",
+        "time_pressure": "low",
+        "last_potassium": 4.2,
+        "eGFR": 38
+      },
+      "expected_result": {
+        "risk_level": "WARNING",
+        "primary_concern": "Hyperkalemia risk",
+        "explanation": "Reduced kidney function + potassium-sparing diuretic increases hyperkalemia risk. Current K+ 4.2 with eGFR 38",
+        "recommendations": [
+          "Start with lowest dose",
+          "Check potassium in 3-5 days",
+          "Monitor for hyperkalemia symptoms",
+          "Consider loop diuretic instead"
+        ]
+      },
+      "teaching_points": [
+        "CKD patients have reduced potassium excretion",
+        "Combining K+ sparing drugs requires close monitoring",
+        "Always check renal function before prescribing"
+      ]
+    },
+    {
+      "scenario_id": "S006",
+      "title": "Safe Combination Example",
+      "patient_id": "P003",
+      "description": "Patient needs antibiotic for strep throat",
+      "drugs_to_check": ["sertraline", "amoxicillin"],
+      "context": {
+        "clinical_situation": "Positive strep test",
+        "nurse_action": "About to start amoxicillin 500mg TID",
+        "time_pressure": "low"
+      },
+      "expected_result": {
+        "risk_level": "SAFE",
+        "primary_concern": "None",
+        "explanation": "No significant interaction between sertraline and amoxicillin. Safe to administer together.",
+        "recommendations": [
+          "Proceed with amoxicillin as prescribed",
+          "Complete full antibiotic course",
+          "Monitor for allergic reactions"
+        ]
+      },
+      "teaching_points": [
+        "Not all drug combinations are dangerous",
+        "SSRIs generally safe with most antibiotics",
+        "Still monitor for unexpected reactions"
+      ]
+    },
+    {
+      "scenario_id": "S007",
+      "title": "Statin-Macrolide Interaction",
+      "patient_id": "P004",
+      "description": "Patient on atorvastatin needs clarithromycin for pneumonia",
+      "drugs_to_check": ["atorvastatin", "clarithromycin"],
+      "context": {
+        "clinical_situation": "Community-acquired pneumonia",
+        "nurse_action": "Starting clarithromycin 500mg BID",
+        "time_pressure": "moderate"
+      },
+      "expected_result": {
+        "risk_level": "WARNING",
+        "primary_concern": "Rhabdomyolysis risk",
+        "explanation": "Clarithromycin inhibits statin metabolism, increasing risk of muscle toxicity and rhabdomyolysis",
+        "recommendations": [
+          "Consider holding atorvastatin during treatment",
+          "Or switch to azithromycin",
+          "Monitor for muscle pain, weakness",
+          "Check CK if symptoms develop"
+        ]
+      },
+      "teaching_points": [
+        "Statins + certain antibiotics = muscle toxicity risk",
+        "Macrolides (except azithromycin) inhibit CYP3A4",
+        "Short-term statin discontinuation usually safe"
+      ]
+    },
+    {
+      "scenario_id": "S008",
+      "title": "QT Prolongation Risk",
+      "patient_id": "P002",
+      "description": "Patient needs antifungal for oral thrush",
+      "drugs_to_check": ["fluconazole", "omeprazole"],
+      "context": {
+        "clinical_situation": "Oral candidiasis from steroid inhaler",
+        "nurse_action": "Starting fluconazole 200mg loading dose",
+        "time_pressure": "low"
+      },
+      "expected_result": {
+        "risk_level": "WARNING",
+        "primary_concern": "QT prolongation",
+        "explanation": "Both medications can prolong QT interval. Combined use increases risk of arrhythmias",
+        "recommendations": [
+          "Obtain baseline ECG if possible",
+          "Monitor for palpitations, dizziness",
+          "Check electrolytes (K+, Mg++)",
+          "Consider topical antifungal instead"
+        ]
+      },
+      "teaching_points": [
+        "QT prolongation is additive with multiple drugs",
+        "Always consider cardiac risks",
+        "Electrolyte abnormalities increase risk"
+      ]
+    }
+  ],
+  "test_cases": [
+    {
+      "input": "coumadin and baby aspirin",
+      "expected_normalized": ["warfarin", "aspirin"],
+      "expected_risk": "DANGER"
+    },
+    {
+      "input": "Zoloft + ultram",
+      "expected_normalized": ["sertraline", "tramadol"],
+      "expected_risk": "WARNING"
+    },
+    {
+      "input": "lipitor clarithromycin",
+      "expected_normalized": ["atorvastatin", "clarithromycin"],
+      "expected_risk": "WARNING"
+    },
+    {
+      "input": "tylenol and motrin",
+      "expected_normalized": ["acetaminophen", "ibuprofen"],
+      "expected_risk": "SAFE"
+    }
+  ]
+}
