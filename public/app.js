@@ -36,7 +36,9 @@ class MedGuardApp {
 
         // Dosage validation elements
         this.drugNameInput = document.getElementById('drugName');
-        this.proposedDoseInput = document.getElementById('proposedDose');
+        this.doseAmount = document.getElementById('doseAmount');
+        this.doseUnit = document.getElementById('doseUnit');
+        this.doseFrequency = document.getElementById('doseFrequency');
         this.patientSelectDosage = document.getElementById('patientSelectDosage');
         this.validateDosageButton = document.getElementById('validateDosageButton');
         this.dosageResultContainer = document.getElementById('dosageResultContainer');
@@ -50,11 +52,42 @@ class MedGuardApp {
         this.patientsGrid = document.getElementById('patientsGrid');
         this.addPatientBtn = document.getElementById('addPatientBtn');
 
+        // Batch review elements
+        this.patientSelectBatch = document.getElementById('patientSelectBatch');
+        this.medicationListUpload = document.getElementById('medicationListUpload');
+        this.fileUploadArea = document.getElementById('fileUploadArea');
+        this.filePreview = document.getElementById('filePreview');
+        this.fileName = document.getElementById('fileName');
+        this.fileSize = document.getElementById('fileSize');
+        this.removeFileBtn = document.getElementById('removeFileBtn');
+        this.medicationTextInput = document.getElementById('medicationTextInput');
+        this.analyzeBatchButton = document.getElementById('analyzeBatchButton');
+        this.batchResultContainer = document.getElementById('batchResultContainer');
+        
+        // Phase 3 action buttons
+        this.clearResultsBtn = document.getElementById('clearResultsBtn');
+        this.flagForDoctorBtn = document.getElementById('flagForDoctorBtn');
+        this.voiceInputBtn = document.getElementById('voiceInputBtn');
+        this.clearDosageResultsBtn = document.getElementById('clearDosageResultsBtn');
+        this.flagDosageForDoctorBtn = document.getElementById('flagDosageForDoctorBtn');
+        this.clearBatchResultsBtn = document.getElementById('clearBatchResultsBtn');
+        this.flagBatchForDoctorBtn = document.getElementById('flagBatchForDoctorBtn');
+        this.printSummaryBtn = document.getElementById('printSummaryBtn');
+
+        // Drug name mic buttons
+        this.drug1Mic = document.getElementById('drug1Mic');
+        this.drug2Mic = document.getElementById('drug2Mic');
+        this.drug3Mic = document.getElementById('drug3Mic');
+        this.drugNameMic = document.getElementById('drugNameMic');
+
         // Settings
         this.lastUpdatedSpan = document.getElementById('lastUpdated');
         if (this.lastUpdatedSpan) {
             this.lastUpdatedSpan.textContent = new Date().toLocaleDateString();
         }
+        
+        // Initialize voice recognition
+        this.initializeVoiceInput();
     }
 
     bindEvents() {
@@ -98,14 +131,18 @@ class MedGuardApp {
         // Dosage validation events
         this.validateDosageButton?.addEventListener('click', () => this.handleDosageValidation());
         
-        [this.drugNameInput, this.proposedDoseInput].forEach(input => {
-            if (input) {
-                input.addEventListener('keypress', (e) => {
-                    if (e.key === 'Enter' && !this.isChecking) {
-                        this.handleDosageValidation();
-                    }
-                });
-                input.addEventListener('input', () => this.validateDosageInputs());
+        // Drug name input events
+        this.drugNameInput?.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && !this.isChecking) {
+                this.handleDosageValidation();
+            }
+        });
+        this.drugNameInput?.addEventListener('input', () => this.validateDosageInputs());
+
+        // Dosage dropdown events
+        [this.doseAmount, this.doseUnit, this.doseFrequency].forEach(select => {
+            if (select) {
+                select.addEventListener('change', () => this.validateDosageInputs());
             }
         });
 
@@ -118,6 +155,18 @@ class MedGuardApp {
             e.preventDefault();
             this.switchPage('settings');
         });
+
+        // Batch review events
+        this.bindBatchReviewEvents();
+
+        // Drug name voice input events
+        this.bindDrugVoiceInputs();
+
+        // Phase 3: Action button events
+        this.bindActionButtons();
+        
+        // Phase 3: Voice input initialization
+        this.initializeVoiceInput();
     }
 
     // Sidebar management
@@ -166,10 +215,12 @@ class MedGuardApp {
     // Dosage validation
     validateDosageInputs() {
         const drugName = this.drugNameInput?.value.trim();
-        const proposedDose = this.proposedDoseInput?.value.trim();
+        const doseAmount = this.doseAmount?.value;
+        const doseUnit = this.doseUnit?.value;
+        const doseFrequency = this.doseFrequency?.value;
         const patientId = this.patientSelectDosage?.value;
         
-        const isValid = drugName.length >= 2 && proposedDose.length >= 2 && patientId;
+        const isValid = drugName.length >= 2 && doseAmount && doseUnit && doseFrequency && patientId;
         if (this.validateDosageButton) {
             this.validateDosageButton.disabled = !isValid || this.isChecking;
         }
@@ -182,9 +233,12 @@ class MedGuardApp {
             return;
         }
 
+        // Construct dosage string from dropdown selections
+        const dosageString = `${this.doseAmount.value}${this.doseUnit.value} ${this.doseFrequency.value}`;
+        
         const drugInfo = {
             drug_name: this.drugNameInput.value.trim(),
-            dosage: this.proposedDoseInput.value.trim()
+            dosage: dosageString
         };
         const patientId = this.patientSelectDosage.value;
 
@@ -341,7 +395,7 @@ class MedGuardApp {
                 'Consult drug reference for dosing guidance'
             ],
             proposed_dose: {
-                original_string: this.proposedDoseInput?.value || ''
+                original_string: `${this.doseAmount?.value || ''}${this.doseUnit?.value || ''} ${this.doseFrequency?.value || ''}`.trim()
             },
             processing_time_ms: 0
         };
@@ -374,18 +428,57 @@ class MedGuardApp {
     async loadPatients() {
         try {
             // In a real app, this would fetch from the server
-            const patients = [
-                { id: 'P001', name: 'Eleanor Martinez', age: 72, gender: 'F', conditions: ['AFib', 'HTN', 'DM'] },
-                { id: 'P002', name: 'James Chen', age: 45, gender: 'M', conditions: ['RA', 'GERD'] },
-                { id: 'P003', name: 'Sarah Johnson', age: 28, gender: 'F', conditions: ['Depression', 'Migraine'] },
-                { id: 'P004', name: 'Robert Wilson', age: 65, gender: 'M', conditions: ['CAD', 'Hyperlipidemia'] },
-                { id: 'P005', name: 'Maria Rodriguez', age: 55, gender: 'F', conditions: ['CKD Stage 3', 'HTN'] }
+            this.patients = [
+                { id: 'P001', name: 'Eleanor Martinez', age: 72, gender: 'F', conditions: ['AFib', 'HTN', 'DM'], weight_kg: 68, eGFR: 45 },
+                { id: 'P002', name: 'James Chen', age: 45, gender: 'M', conditions: ['RA', 'GERD'], weight_kg: 75, eGFR: 85 },
+                { id: 'P003', name: 'Sarah Johnson', age: 28, gender: 'F', conditions: ['Depression', 'Migraine'], weight_kg: 62, eGFR: 95 },
+                { id: 'P004', name: 'Robert Wilson', age: 65, gender: 'M', conditions: ['CAD', 'Hyperlipidemia'], weight_kg: 82, eGFR: 72 },
+                { id: 'P005', name: 'Maria Rodriguez', age: 55, gender: 'F', conditions: ['CKD Stage 3', 'HTN'], weight_kg: 58, eGFR: 32 }
             ];
 
-            this.renderPatients(patients);
+            this.renderPatients(this.patients);
         } catch (error) {
             console.error('Error loading patients:', error);
         }
+    }
+
+    getPatientContext(patientId) {
+        if (!patientId || !this.patients) {
+            return null;
+        }
+
+        const patient = this.patients.find(p => p.id === patientId);
+        if (!patient) {
+            return null;
+        }
+
+        // Convert to the format expected by the subagents
+        return {
+            demographics: {
+                age: patient.age,
+                gender: patient.gender,
+                weight_kg: patient.weight_kg
+            },
+            conditions: patient.conditions.map(condition => ({
+                condition: condition,
+                status: 'active'
+            })),
+            lab_values: {
+                eGFR: {
+                    value: patient.eGFR,
+                    unit: 'mL/min/1.73m²',
+                    date: new Date().toISOString().split('T')[0]
+                },
+                // Add some additional lab values for demo
+                ALT: {
+                    value: patient.id === 'P005' ? 95 : 35, // Maria has elevated ALT
+                    unit: 'U/L',
+                    date: new Date().toISOString().split('T')[0]
+                }
+            },
+            allergies: [],
+            pregnancy_status: patient.gender === 'F' && patient.age < 50 ? 'unknown' : 'not_applicable'
+        };
     }
 
     renderPatients(patients) {
@@ -806,6 +899,1472 @@ class MedGuardApp {
             this.handleCheck();
         }, 300);
     }
+
+    // Phase 3: Action Button Methods
+    bindActionButtons() {
+        // Clear Results buttons
+        const clearBtn = document.getElementById('clearResultsBtn');
+        const clearDosageBtn = document.getElementById('clearDosageResultsBtn');
+        
+        clearBtn?.addEventListener('click', () => this.clearResults('interaction'));
+        clearDosageBtn?.addEventListener('click', () => this.clearResults('dosage'));
+        
+        // Flag for Doctor buttons
+        const flagBtn = document.getElementById('flagForDoctorBtn');
+        const flagDosageBtn = document.getElementById('flagDosageForDoctorBtn');
+        
+        flagBtn?.addEventListener('click', () => this.flagForDoctor('interaction'));
+        flagDosageBtn?.addEventListener('click', () => this.flagForDoctor('dosage'));
+        
+        // Voice Input button
+        const voiceBtn = document.getElementById('voiceInputBtn');
+        voiceBtn?.addEventListener('click', () => this.toggleVoiceInput());
+    }
+
+    clearResults(type) {
+        if (type === 'interaction') {
+            this.resultContainer.style.display = 'none';
+            this.drug1Input.value = '';
+            this.drug2Input.value = '';
+            this.drug3Input.value = '';
+            this.patientSelect.value = '';
+            this.validateInputs();
+        } else if (type === 'dosage') {
+            this.dosageResultContainer.style.display = 'none';
+            this.drugNameInput.value = '';
+            this.doseAmount.value = '';
+            this.doseUnit.value = '';
+            this.doseFrequency.value = '';
+            this.patientSelectDosage.value = '';
+            this.validateDosageInputs();
+        }
+        
+        // Show success feedback
+        this.showNotification('Results cleared successfully', 'success');
+    }
+
+    flagForDoctor(type) {
+        const timestamp = new Date().toISOString();
+        let flagData = {
+            type,
+            timestamp,
+            flagged_by: 'nurse_user',
+            status: 'pending_review'
+        };
+
+        if (type === 'interaction') {
+            flagData.drugs = [
+                this.drug1Input.value,
+                this.drug2Input.value,
+                this.drug3Input.value
+            ].filter(Boolean);
+            flagData.patient_id = this.patientSelect.value;
+        } else if (type === 'dosage') {
+            flagData.drug_name = this.drugNameInput.value;
+            flagData.proposed_dose = `${this.doseAmount.value}${this.doseUnit.value} ${this.doseFrequency.value}`.trim();
+            flagData.patient_id = this.patientSelectDosage.value;
+        }
+
+        // Store flag in localStorage for demo purposes
+        const flags = JSON.parse(localStorage.getItem('doctor_flags') || '[]');
+        flags.push(flagData);
+        localStorage.setItem('doctor_flags', JSON.stringify(flags));
+        
+        // Show success feedback
+        this.showNotification('Flagged for doctor review successfully', 'warning');
+        
+        // In a real system, this would send to a backend API
+        console.log('Flagged for doctor review:', flagData);
+    }
+
+    // Phase 3: Voice Input Methods
+    initializeVoiceInput() {
+        this.isRecording = false;
+        this.recognition = null;
+        
+        // Check for Web Speech API support
+        if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            this.recognition = new SpeechRecognition();
+            
+            this.recognition.continuous = false;
+            this.recognition.interimResults = false;
+            this.recognition.lang = 'en-US';
+            
+            this.recognition.onresult = (event) => {
+                const transcript = event.results[0][0].transcript;
+                this.processVoiceInput(transcript);
+            };
+            
+            this.recognition.onerror = (event) => {
+                console.error('Speech recognition error:', event.error);
+                this.showNotification('Voice input error. Please try again.', 'error');
+                this.stopVoiceInput();
+            };
+            
+            this.recognition.onend = () => {
+                this.stopVoiceInput();
+            };
+        } else {
+            console.warn('Web Speech API not supported');
+        }
+    }
+
+    toggleVoiceInput() {
+        if (!this.recognition) {
+            this.showNotification('Voice input not supported in this browser', 'error');
+            return;
+        }
+        
+        if (this.isRecording) {
+            this.stopVoiceInput();
+        } else {
+            this.startVoiceInput();
+        }
+    }
+
+    startVoiceInput() {
+        this.isRecording = true;
+        const voiceBtn = document.getElementById('voiceInputBtn');
+        
+        if (voiceBtn) {
+            voiceBtn.classList.add('recording');
+            const btnText = voiceBtn.querySelector('.btn-text');
+            if (btnText) btnText.textContent = 'Recording...';
+        }
+        
+        this.recognition.start();
+        this.showNotification('Listening... Speak your medication query', 'info');
+    }
+
+    stopVoiceInput() {
+        this.isRecording = false;
+        const voiceBtn = document.getElementById('voiceInputBtn');
+        
+        if (voiceBtn) {
+            voiceBtn.classList.remove('recording');
+            const btnText = voiceBtn.querySelector('.btn-text');
+            if (btnText) btnText.textContent = 'Voice Input';
+        }
+        
+        if (this.recognition) {
+            this.recognition.stop();
+        }
+    }
+
+    processVoiceInput(transcript) {
+        console.log('Voice input received:', transcript);
+        
+        // Parse voice input for medication names
+        const medications = this.parseVoiceMedications(transcript);
+        
+        if (medications.length > 0) {
+            // Fill in the current page's inputs
+            if (this.currentPage === 'interaction') {
+                if (medications[0]) this.drug1Input.value = medications[0];
+                if (medications[1]) this.drug2Input.value = medications[1];
+                if (medications[2]) this.drug3Input.value = medications[2];
+                this.validateInputs();
+            } else if (this.currentPage === 'dosage') {
+                if (medications[0]) this.drugNameInput.value = medications[0];
+                this.validateDosageInputs();
+            }
+            
+            this.showNotification(`Captured: ${medications.join(', ')}`, 'success');
+        } else {
+            this.showNotification('Could not identify medications. Please try again.', 'warning');
+        }
+    }
+
+    parseVoiceMedications(transcript) {
+        const text = transcript.toLowerCase();
+        
+        // Common medication names for parsing
+        const commonMeds = [
+            'warfarin', 'aspirin', 'metformin', 'lisinopril', 'amlodipine',
+            'metoprolol', 'atorvastatin', 'simvastatin', 'furosemide',
+            'digoxin', 'sertraline', 'tramadol', 'clarithromycin', 'trimethoprim',
+            'methotrexate', 'acetaminophen', 'ibuprofen', 'omeprazole',
+            'spironolactone', 'hydrochlorothiazide'
+        ];
+        
+        const found = [];
+        
+        // Look for exact medication name matches
+        commonMeds.forEach(med => {
+            if (text.includes(med)) {
+                found.push(med);
+            }
+        });
+        
+        // If no exact matches, try partial matching
+        if (found.length === 0) {
+            const words = text.split(/\s+/);
+            words.forEach(word => {
+                const match = commonMeds.find(med => 
+                    med.includes(word) || word.includes(med.substring(0, 4))
+                );
+                if (match && !found.includes(match)) {
+                    found.push(match);
+                }
+            });
+        }
+        
+        return found.slice(0, 3); // Limit to 3 medications
+    }
+
+    // Phase 3: Batch Review Methods
+    bindBatchReviewEvents() {
+        // File upload events
+        this.fileUploadArea?.addEventListener('click', () => {
+            this.medicationListUpload?.click();
+        });
+
+        this.medicationListUpload?.addEventListener('change', (e) => {
+            this.handleFileUpload(e.target.files[0]);
+        });
+
+        // Drag and drop events
+        this.fileUploadArea?.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            this.fileUploadArea.classList.add('drag-over');
+        });
+
+        this.fileUploadArea?.addEventListener('dragleave', () => {
+            this.fileUploadArea.classList.remove('drag-over');
+        });
+
+        this.fileUploadArea?.addEventListener('drop', (e) => {
+            e.preventDefault();
+            this.fileUploadArea.classList.remove('drag-over');
+            const file = e.dataTransfer.files[0];
+            if (file) this.handleFileUpload(file);
+        });
+
+        this.removeFileBtn?.addEventListener('click', () => {
+            this.clearUploadedFile();
+        });
+
+        // Text input events
+        this.medicationTextInput?.addEventListener('input', () => {
+            this.validateBatchInputs();
+        });
+
+        this.patientSelectBatch?.addEventListener('change', () => {
+            this.validateBatchInputs();
+        });
+
+        // Batch analysis event
+        this.analyzeBatchButton?.addEventListener('click', () => {
+            this.handleBatchAnalysis();
+        });
+    }
+
+    handleFileUpload(file) {
+        if (!file) return;
+
+        if (!file.type.includes('csv') && !file.type.includes('text')) {
+            this.showNotification('Please upload a CSV or text file', 'error');
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const content = e.target.result;
+            this.processUploadedFile(file, content);
+        };
+        reader.readAsText(file);
+    }
+
+    processUploadedFile(file, content) {
+        this.uploadedFileContent = content;
+        
+        // Show file preview
+        this.fileName.textContent = file.name;
+        this.fileSize.textContent = this.formatFileSize(file.size);
+        this.fileUploadArea.querySelector('.file-upload-content').style.display = 'none';
+        this.filePreview.style.display = 'flex';
+        
+        // Clear text input if file is uploaded
+        if (this.medicationTextInput) {
+            this.medicationTextInput.value = '';
+        }
+        
+        this.validateBatchInputs();
+        this.showNotification('File uploaded successfully', 'success');
+    }
+
+    clearUploadedFile() {
+        this.uploadedFileContent = null;
+        this.medicationListUpload.value = '';
+        this.fileUploadArea.querySelector('.file-upload-content').style.display = 'flex';
+        this.filePreview.style.display = 'none';
+        this.validateBatchInputs();
+    }
+
+    validateBatchInputs() {
+        const hasPatient = this.patientSelectBatch?.value;
+        const hasFile = this.uploadedFileContent;
+        const hasText = this.medicationTextInput?.value.trim();
+        
+        const isValid = hasPatient && (hasFile || hasText);
+        
+        if (this.analyzeBatchButton) {
+            this.analyzeBatchButton.disabled = !isValid;
+        }
+    }
+
+    async handleBatchAnalysis() {
+        if (!this.patientSelectBatch?.value) {
+            this.showNotification('Please select a patient', 'error');
+            return;
+        }
+
+        let medications = [];
+        
+        if (this.uploadedFileContent) {
+            medications = this.parseMedicationFile(this.uploadedFileContent);
+        } else if (this.medicationTextInput?.value.trim()) {
+            medications = this.parseTextMedications(this.medicationTextInput.value);
+        }
+
+        if (medications.length === 0) {
+            this.showNotification('No medications found to analyze', 'error');
+            return;
+        }
+
+        // Show loading state
+        const originalText = this.analyzeBatchButton.querySelector('.btn-text').textContent;
+        this.analyzeBatchButton.querySelector('.btn-text').style.display = 'none';
+        this.analyzeBatchButton.querySelector('.btn-loader').style.display = 'flex';
+        this.analyzeBatchButton.disabled = true;
+
+        try {
+            const patientContext = this.getPatientContext(this.patientSelectBatch.value);
+            const result = await this.performBatchAnalysis(medications, patientContext);
+            this.displayBatchResults(result);
+        } catch (error) {
+            console.error('Batch analysis error:', error);
+            this.showNotification('Analysis failed. Please try again.', 'error');
+        } finally {
+            // Reset button state
+            this.analyzeBatchButton.querySelector('.btn-text').style.display = 'inline';
+            this.analyzeBatchButton.querySelector('.btn-loader').style.display = 'none';
+            this.analyzeBatchButton.disabled = false;
+        }
+    }
+
+    parseMedicationFile(content) {
+        const medications = [];
+        const lines = content.split('\n').filter(line => line.trim());
+
+        if (lines.length > 0 && lines[0].toLowerCase().includes('drug_name')) {
+            // CSV format with headers
+            const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+            for (let i = 1; i < lines.length; i++) {
+                const values = lines[i].split(',');
+                if (values.length >= headers.length) {
+                    const med = {};
+                    headers.forEach((header, index) => {
+                        med[header] = values[index]?.trim();
+                    });
+                    if (med.drug_name || med.name || med.medication) {
+                        medications.push(med);
+                    }
+                }
+            }
+        } else {
+            // Simple text format
+            medications.push(...this.parseTextMedications(content));
+        }
+
+        return medications;
+    }
+
+    parseTextMedications(text) {
+        return text.split('\n')
+            .map(line => line.trim())
+            .filter(line => line.length > 0)
+            .map(line => ({ drug_name: line }));
+    }
+
+    async performBatchAnalysis(medications, patientContext) {
+        // Inline batch analysis logic for frontend demo
+        const startTime = Date.now();
+        
+        try {
+            // Step 1: Normalize medications
+            const normalizedMeds = this.normalizeMedicationList(medications);
+
+            // Step 2: Generate interaction matrix
+            const interactionMatrix = this.generateInteractionMatrix(normalizedMeds);
+
+            // Step 3: Detect duplicates
+            const duplicateAnalysis = this.detectDuplicateTherapies(normalizedMeds);
+
+            // Step 4: Screen contraindications
+            const contraindications = this.screenContraindications(normalizedMeds, patientContext);
+
+            // Step 5: Prioritize risks
+            const riskAnalysis = this.prioritizeRisks(interactionMatrix, duplicateAnalysis, contraindications);
+
+            // Step 6: Generate recommendations
+            const recommendations = this.generateClinicalRecommendations(riskAnalysis, patientContext);
+
+            // Step 7: Generate summary
+            const summary = this.generateSummaryStatistics(normalizedMeds, riskAnalysis);
+
+            const processingTime = Date.now() - startTime;
+
+            return {
+                status: 'complete',
+                task_id: `batch_${Date.now()}`,
+                result: {
+                    summary,
+                    medications_reviewed: normalizedMeds,
+                    interaction_matrix: interactionMatrix,
+                    duplicate_analysis: duplicateAnalysis,
+                    contraindications,
+                    risk_analysis: riskAnalysis,
+                    clinical_recommendations: recommendations,
+                    processing_time_ms: processingTime,
+                    confidence: this.calculateAnalysisConfidence(riskAnalysis),
+                    workflow: 'batch_prescription_review'
+                }
+            };
+
+        } catch (error) {
+            return {
+                status: 'error',
+                task_id: `batch_${Date.now()}`,
+                error: error.message,
+                processing_time_ms: Date.now() - startTime
+            };
+        }
+    }
+
+    displayBatchResults(result) {
+        if (result.status !== 'complete') {
+            this.showNotification('Analysis failed: ' + result.error, 'error');
+            return;
+        }
+
+        const { summary, risk_analysis, interaction_matrix, clinical_recommendations } = result.result;
+
+        // Show results container
+        this.batchResultContainer.style.display = 'block';
+
+        // Set overall status badge
+        this.setBatchResultBadge(summary.review_status);
+
+        // Display summary statistics
+        this.displaySummaryStats(summary);
+
+        // Display prioritized risks
+        this.displayRiskAnalysis(risk_analysis);
+
+        // Display interaction matrix
+        this.displayInteractionMatrix(interaction_matrix);
+
+        // Display clinical recommendations
+        this.displayClinicalRecommendations(clinical_recommendations);
+
+        // Scroll to results
+        this.batchResultContainer.scrollIntoView({ behavior: 'smooth' });
+
+        this.showNotification('Batch analysis complete', 'success');
+    }
+
+    setBatchResultBadge(status) {
+        const badge = this.batchResultContainer.querySelector('.result-badge');
+        badge.className = 'result-badge';
+        
+        switch (status) {
+            case 'urgent':
+                badge.className += ' badge-critical';
+                badge.textContent = 'URGENT REVIEW REQUIRED';
+                break;
+            case 'high_priority':
+                badge.className += ' badge-warning';
+                badge.textContent = 'HIGH PRIORITY';
+                break;
+            case 'routine_review':
+                badge.className += ' badge-info';
+                badge.textContent = 'ROUTINE REVIEW';
+                break;
+            default:
+                badge.className += ' badge-success';
+                badge.textContent = 'LOW RISK';
+        }
+    }
+
+    displaySummaryStats(summary) {
+        const statsContainer = document.getElementById('summaryStats');
+        statsContainer.innerHTML = `
+            <div class="stat-card">
+                <span class="stat-number">${summary.total_medications}</span>
+                <div class="stat-label">Total Medications</div>
+            </div>
+            <div class="stat-card">
+                <span class="stat-number">${summary.total_risks_identified}</span>
+                <div class="stat-label">Risks Identified</div>
+            </div>
+            <div class="stat-card">
+                <span class="stat-number">${summary.risk_breakdown.critical}</span>
+                <div class="stat-label">Critical Risks</div>
+            </div>
+            <div class="stat-card">
+                <span class="stat-number">${summary.overall_risk_score}</span>
+                <div class="stat-label">Overall Risk Score</div>
+            </div>
+        `;
+    }
+
+    displayRiskAnalysis(risks) {
+        const riskContainer = document.getElementById('riskList');
+        if (risks.length === 0) {
+            riskContainer.innerHTML = '<p>No significant risks identified.</p>';
+            return;
+        }
+
+        riskContainer.innerHTML = risks.map(risk => `
+            <div class="risk-item ${risk.severity}">
+                <div class="risk-content">
+                    <div class="risk-title">${risk.description}</div>
+                    <div class="risk-description">${risk.clinical_impact}</div>
+                </div>
+                <div class="risk-badge ${risk.severity}">${risk.severity.toUpperCase()}</div>
+            </div>
+        `).join('');
+    }
+
+    displayInteractionMatrix(matrix) {
+        const matrixContainer = document.getElementById('interactionMatrix');
+        if (matrix.length === 0) {
+            matrixContainer.innerHTML = '<p>No significant interactions found.</p>';
+            return;
+        }
+
+        const tableHTML = `
+            <table class="matrix-table">
+                <thead>
+                    <tr>
+                        <th>Medication 1</th>
+                        <th>Medication 2</th>
+                        <th>Severity</th>
+                        <th>Mechanism</th>
+                        <th>Management</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${matrix.map(interaction => `
+                        <tr>
+                            <td>${interaction.medication_1.drug_name}</td>
+                            <td>${interaction.medication_2.drug_name}</td>
+                            <td><span class="risk-badge ${interaction.severity}">${interaction.severity}</span></td>
+                            <td>${interaction.mechanism}</td>
+                            <td>${interaction.management}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        `;
+        matrixContainer.innerHTML = tableHTML;
+    }
+
+    displayClinicalRecommendations(recommendations) {
+        const recsContainer = document.getElementById('clinicalRecommendations');
+        const categories = [
+            { key: 'immediate_actions', title: 'Immediate Actions', icon: '🚨' },
+            { key: 'monitoring_requirements', title: 'Monitoring Requirements', icon: '📊' },
+            { key: 'optimization_opportunities', title: 'Optimization Opportunities', icon: '⚡' }
+        ];
+
+        recsContainer.innerHTML = categories.map(category => {
+            const items = recommendations[category.key] || [];
+            if (items.length === 0) return '';
+
+            return `
+                <div class="recommendation-category">
+                    <h4>${category.icon} ${category.title}</h4>
+                    <ul class="recommendation-list">
+                        ${items.map(item => `
+                            <li>${typeof item === 'string' ? item : item.action || item.parameter || item}</li>
+                        `).join('')}
+                    </ul>
+                </div>
+            `;
+        }).filter(html => html).join('');
+    }
+
+    // Phase 3: Action Button Methods
+    bindActionButtons() {
+        // Clear results buttons
+        this.clearResultsBtn?.addEventListener('click', () => {
+            this.resultContainer.style.display = 'none';
+            this.showNotification('Results cleared', 'info');
+        });
+
+        this.clearDosageResultsBtn?.addEventListener('click', () => {
+            this.dosageResultContainer.style.display = 'none';
+            this.showNotification('Dosage results cleared', 'info');
+        });
+
+        this.clearBatchResultsBtn?.addEventListener('click', () => {
+            this.batchResultContainer.style.display = 'none';
+            this.showNotification('Batch results cleared', 'info');
+        });
+
+        // Flag for doctor buttons
+        this.flagForDoctorBtn?.addEventListener('click', () => {
+            this.flagForDoctor('interaction');
+        });
+
+        this.flagDosageForDoctorBtn?.addEventListener('click', () => {
+            this.flagForDoctor('dosage');
+        });
+
+        this.flagBatchForDoctorBtn?.addEventListener('click', () => {
+            this.flagForDoctor('batch');
+        });
+
+        // Voice input button
+        this.voiceInputBtn?.addEventListener('click', () => {
+            this.toggleVoiceInput();
+        });
+
+        // Print summary button
+        this.printSummaryBtn?.addEventListener('click', () => {
+            this.printBatchSummary();
+        });
+    }
+
+    flagForDoctor(type) {
+        const flagData = {
+            type,
+            timestamp: new Date().toISOString(),
+            flagged_by: 'nurse_user',
+            status: 'pending_review'
+        };
+
+        // Store in localStorage for demo purposes
+        const flags = JSON.parse(localStorage.getItem('doctor_flags') || '[]');
+        flags.push(flagData);
+        localStorage.setItem('doctor_flags', JSON.stringify(flags));
+
+        this.showNotification('Flagged for doctor review successfully', 'warning');
+    }
+
+    // Phase 3: Voice Input Methods
+    initializeVoiceInput() {
+        if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            this.recognition = new SpeechRecognition();
+            
+            this.recognition.continuous = false;
+            this.recognition.interimResults = false;
+            this.recognition.lang = 'en-US';
+
+            this.recognition.onstart = () => {
+                this.voiceInputBtn?.classList.add('recording');
+                this.showNotification('Listening for medication names...', 'info');
+            };
+
+            this.recognition.onresult = (event) => {
+                const transcript = event.results[0][0].transcript.toLowerCase();
+                this.processVoiceInput(transcript);
+            };
+
+            this.recognition.onerror = (event) => {
+                console.error('Speech recognition error:', event.error);
+                this.voiceInputBtn?.classList.remove('recording');
+                this.showNotification('Voice recognition failed. Please try again.', 'error');
+            };
+
+            this.recognition.onend = () => {
+                this.voiceInputBtn?.classList.remove('recording');
+            };
+        } else {
+            console.warn('Speech recognition not supported');
+            if (this.voiceInputBtn) {
+                this.voiceInputBtn.style.display = 'none';
+            }
+        }
+    }
+
+    toggleVoiceInput() {
+        if (!this.recognition) return;
+
+        if (this.voiceInputBtn?.classList.contains('recording')) {
+            this.recognition.stop();
+        } else {
+            this.recognition.start();
+        }
+    }
+
+    processVoiceInput(transcript) {
+        // Parse medication names from voice input
+        const medications = this.parseMedicationNames(transcript);
+        
+        if (medications.length > 0) {
+            // Fill in the form based on current page
+            if (this.currentPage === 'interaction') {
+                if (medications[0] && this.drug1Input) this.drug1Input.value = medications[0];
+                if (medications[1] && this.drug2Input) this.drug2Input.value = medications[1];
+                if (medications[2] && this.drug3Input) this.drug3Input.value = medications[2];
+                this.validateInputs();
+            } else if (this.currentPage === 'dosage') {
+                if (medications[0] && this.drugNameInput) this.drugNameInput.value = medications[0];
+                this.validateDosageInputs();
+            } else if (this.currentPage === 'batch') {
+                const medText = medications.join('\n');
+                if (this.medicationTextInput) this.medicationTextInput.value = medText;
+                this.validateBatchInputs();
+            }
+            
+            this.showNotification(`Recognized: ${medications.join(', ')}`, 'success');
+        } else {
+            this.showNotification('No medication names recognized. Please try again.', 'warning');
+        }
+    }
+
+    parseMedicationNames(transcript) {
+        // Common medication database for voice recognition
+        const commonMeds = [
+            'warfarin', 'aspirin', 'metformin', 'lisinopril', 'amlodipine',
+            'metoprolol', 'atorvastatin', 'furosemide', 'digoxin', 'sertraline',
+            'tramadol', 'acetaminophen', 'ibuprofen', 'omeprazole', 'levothyroxine',
+            'prednisone', 'albuterol', 'insulin', 'hydrochlorothiazide', 'losartan'
+        ];
+
+        const found = [];
+        const words = transcript.split(/\s+/);
+        
+        // Look for medication names in the transcript
+        for (const med of commonMeds) {
+            if (transcript.includes(med) || words.some(word => 
+                word.length > 3 && med.toLowerCase().includes(word.toLowerCase())
+            )) {
+                if (!found.includes(med)) {
+                    found.push(med);
+                }
+            }
+        }
+        
+        return found.slice(0, 3); // Limit to 3 medications
+    }
+
+    printBatchSummary() {
+        const printWindow = window.open('', '_blank');
+        const batchResults = this.batchResultContainer.innerHTML;
+        
+        printWindow.document.write(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>MedGuard AI - Batch Prescription Review</title>
+                <style>
+                    body { font-family: Arial, sans-serif; margin: 20px; }
+                    .result-card { border: 1px solid #ddd; border-radius: 8px; padding: 20px; }
+                    .stat-card { display: inline-block; margin: 10px; padding: 15px; border: 1px solid #ccc; border-radius: 6px; text-align: center; }
+                    .risk-item { margin: 10px 0; padding: 10px; border-left: 4px solid #ccc; }
+                    .risk-item.critical { border-left-color: #ef4444; }
+                    .risk-item.major { border-left-color: #f59e0b; }
+                    .matrix-table { width: 100%; border-collapse: collapse; margin: 10px 0; }
+                    .matrix-table th, .matrix-table td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+                    .matrix-table th { background-color: #f5f5f5; }
+                    .action-buttons-section { display: none; }
+                </style>
+            </head>
+            <body>
+                <h1>MedGuard AI - Batch Prescription Review</h1>
+                <p>Generated: ${new Date().toLocaleString()}</p>
+                ${batchResults}
+            </body>
+            </html>
+        `);
+        
+        printWindow.document.close();
+        printWindow.print();
+    }
+
+    formatFileSize(bytes) {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+
+    // Batch Analysis Support Methods
+    normalizeMedicationList(medications) {
+        return medications.map((med, index) => {
+            let normalized = {
+                id: `med_${index + 1}`,
+                original_input: med,
+                parsed: false
+            };
+
+            if (typeof med === 'string') {
+                const parsed = this.parseStringMedication(med);
+                normalized = { ...normalized, ...parsed };
+            } else if (typeof med === 'object') {
+                normalized = {
+                    ...normalized,
+                    drug_name: med.drug_name || med.name || med.medication,
+                    dose: med.dose || med.dosage,
+                    frequency: med.frequency || med.freq,
+                    route: med.route || 'oral',
+                    indication: med.indication || med.purpose,
+                    parsed: true
+                };
+            }
+
+            normalized.drug_class = this.classifyDrug(normalized.drug_name);
+            return normalized;
+        });
+    }
+
+    parseStringMedication(medString) {
+        const cleanString = medString.trim().toLowerCase();
+        
+        const patterns = [
+            /^([a-z\s]+?)\s+(\d+\.?\d*\s*(?:mg|g|ml|units?))\s+([\w\s]+)$/i,
+            /^([a-z\s]+?)\s+(\d+\.?\d*)\s*(mg|g|ml|units?)\s+([\w\s]+)$/i,
+            /^([a-z\s]+)$/i
+        ];
+
+        for (const pattern of patterns) {
+            const match = cleanString.match(pattern);
+            if (match) {
+                return {
+                    drug_name: match[1].trim(),
+                    dose: match[2] ? match[2].trim() + (match[3] || '') : null,
+                    frequency: match[4] ? match[4].trim() : 'as directed',
+                    route: 'oral',
+                    parsed: true
+                };
+            }
+        }
+
+        return {
+            drug_name: cleanString,
+            dose: null,
+            frequency: 'as directed',
+            route: 'oral',
+            parsed: false
+        };
+    }
+
+    generateInteractionMatrix(medications) {
+        const matrix = [];
+        
+        for (let i = 0; i < medications.length; i++) {
+            for (let j = i + 1; j < medications.length; j++) {
+                const med1 = medications[i];
+                const med2 = medications[j];
+                
+                const interaction = this.analyzeInteraction(med1, med2);
+                if (interaction.severity !== 'none') {
+                    matrix.push({
+                        medication_1: med1,
+                        medication_2: med2,
+                        interaction_type: interaction.type,
+                        severity: interaction.severity,
+                        mechanism: interaction.mechanism,
+                        clinical_significance: interaction.clinical_significance,
+                        management: interaction.management,
+                        confidence: interaction.confidence
+                    });
+                }
+            }
+        }
+
+        return matrix.sort((a, b) => {
+            const severityOrder = { 'critical': 4, 'major': 3, 'moderate': 2, 'minor': 1 };
+            return severityOrder[b.severity] - severityOrder[a.severity];
+        });
+    }
+
+    analyzeInteraction(med1, med2) {
+        const drug1 = med1.drug_name.toLowerCase();
+        const drug2 = med2.drug_name.toLowerCase();
+
+        // Critical interactions database
+        const interactions = {
+            'warfarin_aspirin': {
+                type: 'pharmacodynamic',
+                severity: 'critical',
+                mechanism: 'Additive anticoagulant effects',
+                clinical_significance: 'Major bleeding risk - potentially life-threatening',
+                management: 'Avoid combination. Use acetaminophen for pain relief.',
+                confidence: 0.95
+            },
+            'methotrexate_trimethoprim': {
+                type: 'pharmacokinetic',
+                severity: 'critical',
+                mechanism: 'Trimethoprim inhibits methotrexate elimination',
+                clinical_significance: 'Bone marrow suppression, mucositis, hepatotoxicity',
+                management: 'Avoid combination. Use alternative antibiotic.',
+                confidence: 0.92
+            },
+            'sertraline_tramadol': {
+                type: 'pharmacodynamic',
+                severity: 'major',
+                mechanism: 'Increased serotonin levels',
+                clinical_significance: 'Serotonin syndrome risk',
+                management: 'Use with caution. Monitor for serotonin syndrome symptoms.',
+                confidence: 0.80
+            },
+            'atorvastatin_clarithromycin': {
+                type: 'pharmacokinetic',
+                severity: 'moderate',
+                mechanism: 'CYP3A4 inhibition increases statin levels',
+                clinical_significance: 'Increased risk of myopathy',
+                management: 'Consider statin interruption during antibiotic course.',
+                confidence: 0.75
+            }
+        };
+
+        // Check for specific interactions
+        const key1 = `${drug1}_${drug2}`;
+        const key2 = `${drug2}_${drug1}`;
+        
+        if (interactions[key1]) return interactions[key1];
+        if (interactions[key2]) return interactions[key2];
+
+        // Check for NSAIDs + anticoagulants
+        const nsaids = ['aspirin', 'ibuprofen', 'naproxen'];
+        const anticoagulants = ['warfarin', 'heparin'];
+        
+        if ((nsaids.includes(drug1) && anticoagulants.includes(drug2)) ||
+            (nsaids.includes(drug2) && anticoagulants.includes(drug1))) {
+            return {
+                type: 'pharmacodynamic',
+                severity: 'major',
+                mechanism: 'Increased bleeding risk',
+                clinical_significance: 'Additive anticoagulant effects',
+                management: 'Monitor INR closely, watch for bleeding',
+                confidence: 0.85
+            };
+        }
+
+        return {
+            type: 'none',
+            severity: 'none',
+            mechanism: 'No significant interaction identified',
+            clinical_significance: 'No clinical concern',
+            management: 'No special precautions required',
+            confidence: 0.60
+        };
+    }
+
+    detectDuplicateTherapies(medications) {
+        const duplicates = [];
+        const therapeuticClasses = {};
+
+        medications.forEach(med => {
+            const therapeuticClass = this.getTherapeuticClass(med.drug_name);
+            
+            if (!therapeuticClasses[therapeuticClass]) {
+                therapeuticClasses[therapeuticClass] = [];
+            }
+            therapeuticClasses[therapeuticClass].push(med);
+        });
+
+        Object.entries(therapeuticClasses).forEach(([className, meds]) => {
+            if (meds.length > 1 && className !== 'other') {
+                duplicates.push({
+                    therapeutic_class: className,
+                    medications: meds,
+                    severity: 'moderate',
+                    recommendation: `Review necessity of multiple ${className}. Consider consolidation.`
+                });
+            }
+        });
+
+        return duplicates;
+    }
+
+    screenContraindications(medications, patientContext) {
+        if (!patientContext) return [];
+
+        const contraindications = [];
+        
+        medications.forEach(med => {
+            const drugName = med.drug_name.toLowerCase();
+            
+            // Check for specific contraindications
+            if (drugName.includes('metformin') && patientContext.lab_values?.eGFR?.value < 30) {
+                contraindications.push({
+                    medication: med,
+                    contraindication_type: 'renal_impairment',
+                    reason: 'Risk of lactic acidosis with severe renal impairment',
+                    severity: 'major',
+                    patient_factor: `eGFR ${patientContext.lab_values.eGFR.value}`,
+                    recommendation: 'Discontinue or use alternative antidiabetic'
+                });
+            }
+
+            if (drugName.includes('nsaid') || drugName.includes('ibuprofen') || drugName.includes('naproxen')) {
+                if (patientContext.lab_values?.eGFR?.value < 60) {
+                    contraindications.push({
+                        medication: med,
+                        contraindication_type: 'renal_impairment',
+                        reason: 'NSAIDs can worsen renal function',
+                        severity: 'moderate',
+                        patient_factor: `eGFR ${patientContext.lab_values.eGFR.value}`,
+                        recommendation: 'Use with caution, monitor renal function'
+                    });
+                }
+            }
+        });
+
+        return contraindications;
+    }
+
+    prioritizeRisks(interactions, duplicates, contraindications) {
+        const risks = [];
+
+        // Add interaction risks
+        interactions.forEach(interaction => {
+            risks.push({
+                type: 'interaction',
+                priority: this.calculateRiskPriority('interaction', interaction.severity),
+                severity: interaction.severity,
+                description: `${interaction.medication_1.drug_name} + ${interaction.medication_2.drug_name}`,
+                clinical_impact: interaction.clinical_significance,
+                action_required: interaction.management,
+                confidence: interaction.confidence
+            });
+        });
+
+        // Add duplicate therapy risks
+        duplicates.forEach(duplicate => {
+            risks.push({
+                type: 'duplicate_therapy',
+                priority: this.calculateRiskPriority('duplicate', 'moderate'),
+                severity: 'moderate',
+                description: `Multiple ${duplicate.therapeutic_class} medications`,
+                clinical_impact: 'Potential additive effects or redundancy',
+                action_required: duplicate.recommendation,
+                confidence: 0.80
+            });
+        });
+
+        // Add contraindication risks
+        contraindications.forEach(contra => {
+            risks.push({
+                type: 'contraindication',
+                priority: this.calculateRiskPriority('contraindication', contra.severity),
+                severity: contra.severity,
+                description: `${contra.medication.drug_name} contraindicated`,
+                clinical_impact: contra.reason,
+                action_required: contra.recommendation,
+                confidence: 0.90
+            });
+        });
+
+        return risks.sort((a, b) => b.priority - a.priority);
+    }
+
+    generateClinicalRecommendations(risks, patientContext) {
+        const recommendations = {
+            immediate_actions: [],
+            monitoring_requirements: [],
+            optimization_opportunities: []
+        };
+
+        // Process high-priority risks
+        risks.filter(risk => risk.priority >= 80).forEach(risk => {
+            if (risk.severity === 'critical' || risk.severity === 'major') {
+                recommendations.immediate_actions.push(risk.action_required);
+            }
+        });
+
+        // Add patient-specific monitoring
+        if (patientContext) {
+            if (patientContext.demographics.age >= 65) {
+                recommendations.monitoring_requirements.push('Monitor renal function every 6 months (elderly patient)');
+            }
+            if (patientContext.lab_values?.eGFR?.value < 60) {
+                recommendations.monitoring_requirements.push('Regular renal function monitoring (CKD present)');
+            }
+        }
+
+        // Add general optimization opportunities
+        if (risks.length > 3) {
+            recommendations.optimization_opportunities.push('Consider medication reconciliation with clinical pharmacist');
+        }
+
+        return recommendations;
+    }
+
+    generateSummaryStatistics(medications, risks) {
+        const criticalRisks = risks.filter(r => r.severity === 'critical').length;
+        const majorRisks = risks.filter(r => r.severity === 'major').length;
+        const moderateRisks = risks.filter(r => r.severity === 'moderate').length;
+        
+        return {
+            total_medications: medications.length,
+            total_risks_identified: risks.length,
+            risk_breakdown: {
+                critical: criticalRisks,
+                major: majorRisks,
+                moderate: moderateRisks,
+                minor: risks.length - criticalRisks - majorRisks - moderateRisks
+            },
+            overall_risk_score: this.calculateOverallRiskScore(risks),
+            review_status: this.determineReviewStatus(risks),
+            requires_physician_review: criticalRisks > 0 || majorRisks > 2
+        };
+    }
+
+    classifyDrug(drugName) {
+        const classifications = {
+            'warfarin': 'anticoagulant',
+            'aspirin': 'antiplatelet',
+            'metformin': 'antidiabetic',
+            'lisinopril': 'ace_inhibitor',
+            'amlodipine': 'calcium_channel_blocker',
+            'metoprolol': 'beta_blocker',
+            'atorvastatin': 'statin',
+            'furosemide': 'diuretic',
+            'digoxin': 'cardiac_glycoside'
+        };
+        
+        return classifications[drugName.toLowerCase()] || 'other';
+    }
+
+    getTherapeuticClass(drugName) {
+        const classes = {
+            'lisinopril': 'ace_inhibitors',
+            'losartan': 'ace_inhibitors',
+            'metoprolol': 'beta_blockers',
+            'propranolol': 'beta_blockers',
+            'amlodipine': 'calcium_channel_blockers',
+            'atorvastatin': 'statins',
+            'simvastatin': 'statins',
+            'ibuprofen': 'nsaids',
+            'naproxen': 'nsaids'
+        };
+        
+        return classes[drugName.toLowerCase()] || 'other';
+    }
+
+    calculateRiskPriority(type, severity) {
+        const basePriority = {
+            'critical': 95,
+            'major': 80,
+            'moderate': 60,
+            'minor': 30
+        };
+        
+        const typeMultiplier = {
+            'contraindication': 1.1,
+            'interaction': 1.0,
+            'duplicate': 0.8
+        };
+        
+        return Math.round(basePriority[severity] * typeMultiplier[type]);
+    }
+
+    calculateOverallRiskScore(risks) {
+        if (risks.length === 0) return 0;
+        
+        const weightedSum = risks.reduce((sum, risk) => sum + risk.priority, 0);
+        return Math.round(weightedSum / risks.length);
+    }
+
+    determineReviewStatus(risks) {
+        const criticalCount = risks.filter(r => r.severity === 'critical').length;
+        const majorCount = risks.filter(r => r.severity === 'major').length;
+        
+        if (criticalCount > 0) return 'urgent';
+        if (majorCount > 1) return 'high_priority';
+        if (risks.length > 0) return 'routine_review';
+        return 'low_risk';
+    }
+
+    calculateAnalysisConfidence(risks) {
+        if (risks.length === 0) return 0.7;
+        
+        const avgConfidence = risks.reduce((sum, risk) => sum + risk.confidence, 0) / risks.length;
+        return Math.round(avgConfidence * 100) / 100;
+    }
+
+    // Drug Name Voice Input System
+    bindDrugVoiceInputs() {
+        // Bind mic buttons to their corresponding input fields
+        const micButtons = [
+            { button: this.drug1Mic, input: this.drug1Input, fieldName: 'drug1' },
+            { button: this.drug2Mic, input: this.drug2Input, fieldName: 'drug2' },
+            { button: this.drug3Mic, input: this.drug3Input, fieldName: 'drug3' },
+            { button: this.drugNameMic, input: this.drugNameInput, fieldName: 'drugName' }
+        ];
+
+        micButtons.forEach(({ button, input, fieldName }) => {
+            if (button && input) {
+                button.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    this.startDrugVoiceInput(button, input, fieldName);
+                });
+            }
+        });
+
+        // Initialize MediaRecorder support check
+        this.checkMediaRecorderSupport();
+    }
+
+    checkMediaRecorderSupport() {
+        this.mediaRecorderSupported = 'MediaRecorder' in window && 
+                                     navigator.mediaDevices && 
+                                     navigator.mediaDevices.getUserMedia;
+        
+        if (!this.mediaRecorderSupported) {
+            console.warn('MediaRecorder not supported, voice input disabled');
+            // Hide mic buttons if not supported
+            document.querySelectorAll('.mic-btn').forEach(btn => {
+                btn.style.display = 'none';
+            });
+        }
+    }
+
+    async startDrugVoiceInput(micButton, inputField, fieldName) {
+        if (!this.mediaRecorderSupported) {
+            this.showNotification('Voice input not supported in this browser', 'error');
+            return;
+        }
+
+        try {
+            // Request microphone permission
+            const stream = await navigator.mediaDevices.getUserMedia({ 
+                audio: {
+                    sampleRate: 16000,
+                    channelCount: 1,
+                    echoCancellation: true,
+                    noiseSuppression: true
+                } 
+            });
+
+            // Set recording state
+            micButton.classList.add('recording');
+            this.showNotification('Recording... speak the drug name clearly', 'info');
+
+            // Setup MediaRecorder
+            const mediaRecorder = new MediaRecorder(stream, {
+                mimeType: 'audio/webm;codecs=opus'
+            });
+
+            const audioChunks = [];
+            
+            mediaRecorder.ondataavailable = (event) => {
+                if (event.data.size > 0) {
+                    audioChunks.push(event.data);
+                }
+            };
+
+            mediaRecorder.onstop = async () => {
+                // Stop all tracks
+                stream.getTracks().forEach(track => track.stop());
+                
+                // Set processing state
+                micButton.classList.remove('recording');
+                micButton.classList.add('processing');
+                this.showNotification('Processing audio...', 'info');
+
+                // Create audio blob
+                const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                
+                // Send to backend for transcription
+                await this.processVoiceInput(audioBlob, inputField, micButton, fieldName);
+            };
+
+            // Start recording
+            mediaRecorder.start();
+
+            // Auto-stop after 2 seconds for faster processing
+            setTimeout(() => {
+                if (mediaRecorder.state === 'recording') {
+                    mediaRecorder.stop();
+                }
+            }, 2000);
+
+            // Allow manual stop by clicking again
+            const stopHandler = () => {
+                if (mediaRecorder.state === 'recording') {
+                    mediaRecorder.stop();
+                }
+                micButton.removeEventListener('click', stopHandler);
+            };
+            micButton.addEventListener('click', stopHandler);
+
+        } catch (error) {
+            console.error('Voice input error:', error);
+            micButton.classList.remove('recording');
+            this.showNotification('Microphone access denied or unavailable', 'error');
+        }
+    }
+
+    async processVoiceInput(audioBlob, inputField, micButton, fieldName) {
+        try {
+            // Prepare form data for backend
+            const formData = new FormData();
+            formData.append('audio', audioBlob, 'voice-input.webm');
+
+            // Send to backend transcription service
+            const response = await fetch('http://localhost:3002/api/transcribe', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (!response.ok) {
+                throw new Error(`Transcription failed: ${response.status}`);
+            }
+
+            const result = await response.json();
+            
+            if (result.success && result.validated_drugs && result.validated_drugs.length > 0) {
+                // Use the best matched drug name
+                const bestMatch = result.validated_drugs[0];
+                inputField.value = bestMatch.matched;
+                
+                // Show success state
+                micButton.classList.remove('processing');
+                micButton.classList.add('success');
+                
+                // Show suggestions if multiple matches
+                if (result.validated_drugs.length > 1) {
+                    this.showDrugSuggestions(inputField, result.validated_drugs);
+                }
+                
+                this.showNotification(`Recognized: ${bestMatch.matched}`, 'success');
+                
+                // Trigger validation
+                this.validateInputs();
+                this.validateDosageInputs();
+            } else {
+                // Fallback to basic transcription
+                if (result.transcription) {
+                    const drugMatch = await this.searchDrugNames(result.transcription);
+                    if (drugMatch) {
+                        inputField.value = drugMatch;
+                        micButton.classList.remove('processing');
+                        micButton.classList.add('success');
+                        this.showNotification(`Found: ${drugMatch}`, 'success');
+                    } else {
+                        inputField.value = result.transcription;
+                        micButton.classList.remove('processing');
+                        this.showNotification(`Transcribed: ${result.transcription} (please verify)`, 'warning');
+                    }
+                } else {
+                    throw new Error('No transcription result');
+                }
+            }
+
+        } catch (error) {
+            console.error('Voice processing error:', error);
+            micButton.classList.remove('processing');
+            
+            // Check if backend is available
+            if (error.message.includes('Failed to fetch')) {
+                this.showNotification('Voice service unavailable. Backend server not running.', 'error');
+            } else {
+                this.showNotification('Voice recognition failed. Please try again.', 'error');
+            }
+        }
+
+        // Reset mic button state after 2 seconds
+        setTimeout(() => {
+            micButton.classList.remove('success', 'processing');
+        }, 2000);
+    }
+
+    async searchDrugNames(query) {
+        try {
+            const response = await fetch('http://localhost:3002/api/drugs/search', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ query, limit: 1 })
+            });
+
+            if (response.ok) {
+                const result = await response.json();
+                if (result.results && result.results.length > 0) {
+                    return result.results[0].name;
+                }
+            }
+        } catch (error) {
+            console.error('Drug search error:', error);
+        }
+        return null;
+    }
+
+    showDrugSuggestions(inputField, suggestions) {
+        // Remove existing suggestions
+        const existingSuggestions = inputField.parentElement.querySelector('.drug-suggestions');
+        if (existingSuggestions) {
+            existingSuggestions.remove();
+        }
+
+        // Create suggestions dropdown
+        const suggestionsDiv = document.createElement('div');
+        suggestionsDiv.className = 'drug-suggestions';
+
+        suggestions.slice(0, 3).forEach(drug => {
+            const suggestionDiv = document.createElement('div');
+            suggestionDiv.className = 'drug-suggestion';
+            suggestionDiv.innerHTML = `
+                <div class="drug-suggestion-name">${drug.matched}</div>
+                <div class="drug-suggestion-generic">Generic: ${drug.generic}</div>
+            `;
+            
+            suggestionDiv.addEventListener('click', () => {
+                inputField.value = drug.matched;
+                suggestionsDiv.remove();
+                this.validateInputs();
+                this.validateDosageInputs();
+            });
+
+            suggestionsDiv.appendChild(suggestionDiv);
+        });
+
+        // Position and show suggestions
+        inputField.parentElement.appendChild(suggestionsDiv);
+
+        // Hide suggestions when clicking elsewhere
+        setTimeout(() => {
+            document.addEventListener('click', function hideHandler(e) {
+                if (!suggestionsDiv.contains(e.target)) {
+                    suggestionsDiv.remove();
+                    document.removeEventListener('click', hideHandler);
+                }
+            });
+        }, 100);
+    }
+
+    // Notification system
+    showNotification(message, type = 'info') {
+        // Create notification element if it doesn't exist
+        let notification = document.getElementById('notification');
+        if (!notification) {
+            notification = document.createElement('div');
+            notification.id = 'notification';
+            notification.className = 'notification';
+            document.body.appendChild(notification);
+        }
+        
+        // Set notification content and style
+        notification.textContent = message;
+        notification.className = `notification notification-${type} show`;
+        
+        // Auto-hide after 4 seconds
+        setTimeout(() => {
+            notification.classList.remove('show');
+        }, 4000);
+    }
 }
 
 // Initialize the application when DOM is loaded
@@ -814,6 +2373,6 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // Add some console styling
-console.log('%c🏥 MedGuard AI Phase 2', 'font-size: 24px; color: #0066ff; font-weight: bold;');
-console.log('%cPatient Context & Dosage Validation', 'font-size: 14px; color: #8b5cf6;');
+console.log('%c🏥 MedGuard AI Phase 3', 'font-size: 24px; color: #0066ff; font-weight: bold;');
+console.log('%cBatch Prescription Review & Voice Input', 'font-size: 14px; color: #8b5cf6;');
 console.log('%cBuilt with LangGraph & MCP', 'font-size: 12px; color: #6b7280;');

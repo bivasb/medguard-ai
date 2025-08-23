@@ -38,11 +38,18 @@
                 </svg>
                 <span>Patient Management</span>
             </a>
+            <a href="#" class="nav-item" data-page="batch" title="Batch Prescription Review">
+                <svg class="nav-icon" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/>
+                    <path d="M19 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.11 0 2-.9 2-2V5c0-1.1-.89-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/>
+                </svg>
+                <span>Batch Review</span>
+            </a>
         </nav>
         
         <div class="sidebar-footer">
             <div class="phase-indicator">
-                <span class="phase-badge">P2</span>
+                <span class="phase-badge">P3</span>
             </div>
             <div class="sidebar-settings" title="Settings" data-page="settings">
                 <svg class="nav-icon" viewBox="0 0 24 24" fill="currentColor">
@@ -74,7 +81,7 @@
                 </svg>
                 <span>MedGuard AI</span>
             </div>
-            <div class="nav-subtitle">Phase 2: Patient Context & Dosage Validation</div>
+            <div class="nav-subtitle">Phase 3: Batch Prescription Review & Voice Input</div>
         </div>
     </nav>
 
@@ -93,20 +100,41 @@
             <div class="input-section">
                 <div class="input-group">
                     <label for="drug1">First Drug</label>
-                    <input type="text" id="drug1" placeholder="e.g., warfarin, Coumadin" autocomplete="off">
-                    <small class="input-hint">Enter generic or brand name</small>
+                    <div class="input-with-mic">
+                        <input type="text" id="drug1" placeholder="e.g., warfarin, Coumadin" autocomplete="off">
+                        <button type="button" class="mic-btn" id="drug1Mic" title="Voice input for drug name">
+                            <svg class="mic-icon" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8a1 1 0 10-2 0A5 5 0 015 8a1 1 0 00-2 0 7.001 7.001 0 006 6.93V17H6a1 1 0 100 2h8a1 1 0 100-2h-3v-2.07z" clip-rule="evenodd"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <small class="input-hint">Enter generic or brand name or use voice input</small>
                 </div>
                 
                 <div class="input-group">
                     <label for="drug2">Second Drug</label>
-                    <input type="text" id="drug2" placeholder="e.g., aspirin, ibuprofen" autocomplete="off">
-                    <small class="input-hint">Enter generic or brand name</small>
+                    <div class="input-with-mic">
+                        <input type="text" id="drug2" placeholder="e.g., aspirin, ibuprofen" autocomplete="off">
+                        <button type="button" class="mic-btn" id="drug2Mic" title="Voice input for drug name">
+                            <svg class="mic-icon" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8a1 1 0 10-2 0A5 5 0 715 8a1 1 0 00-2 0 7.001 7.001 0 006 6.93V17H6a1 1 0 100 2h8a1 1 0 100-2h-3v-2.07z" clip-rule="evenodd"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <small class="input-hint">Enter generic or brand name or use voice input</small>
                 </div>
 
                 <div class="input-group">
                     <label for="drug3">Additional Drug (Optional)</label>
-                    <input type="text" id="drug3" placeholder="e.g., metformin" autocomplete="off">
-                    <small class="input-hint">Check multiple interactions</small>
+                    <div class="input-with-mic">
+                        <input type="text" id="drug3" placeholder="e.g., metformin" autocomplete="off">
+                        <button type="button" class="mic-btn" id="drug3Mic" title="Voice input for drug name">
+                            <svg class="mic-icon" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M7 4a3 3 0 616 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8a1 1 0 10-2 0A5 5 0 015 8a1 1 0 00-2 0 7.001 7.001 0 006 6.93V17H6a1 1 0 100 2h8a1 1 0 100-2h-3v-2.07z" clip-rule="evenodd"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <small class="input-hint">Check multiple interactions or use voice input</small>
                 </div>
                 
                 <div class="input-group">
@@ -166,6 +194,31 @@
                             <span class="check-date"></span>
                         </span>
                     </div>
+
+                    <!-- Phase 3: Action Buttons -->
+                    <div class="action-buttons-section">
+                        <div class="action-buttons">
+                            <button class="btn btn-secondary action-btn clear-btn" id="clearResultsBtn">
+                                <svg class="btn-icon" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" clip-rule="evenodd"/>
+                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414L9 13.414l3.707-3.707z" clip-rule="evenodd"/>
+                                </svg>
+                                <span class="btn-text">Clear Results</span>
+                            </button>
+                            <button class="btn btn-warning action-btn flag-btn" id="flagForDoctorBtn">
+                                <svg class="btn-icon" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M3 6a3 3 0 013-3h10a1 1 0 01.8 1.6L14.25 8l2.55 3.4A1 1 0 0116 13H6a1 1 0 00-1 1v3a1 1 0 11-2 0V6z" clip-rule="evenodd"/>
+                                </svg>
+                                <span class="btn-text">Flag for Doctor</span>
+                            </button>
+                            <button class="btn btn-info action-btn voice-btn" id="voiceInputBtn">
+                                <svg class="btn-icon" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8a1 1 0 10-2 0A5 5 0 015 8a1 1 0 00-2 0 7.001 7.001 0 006 6.93V17H6a1 1 0 100 2h8a1 1 0 100-2h-3v-2.07z" clip-rule="evenodd"/>
+                                </svg>
+                                <span class="btn-text">Voice Input</span>
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -181,14 +234,78 @@
                 <div class="input-section">
                     <div class="input-group">
                         <label for="drugName">Drug Name</label>
-                        <input type="text" id="drugName" placeholder="e.g., warfarin, acetaminophen" autocomplete="off">
-                        <small class="input-hint">Enter generic or brand name</small>
+                        <div class="input-with-mic">
+                            <input type="text" id="drugName" placeholder="e.g., warfarin, acetaminophen" autocomplete="off">
+                            <button type="button" class="mic-btn" id="drugNameMic" title="Voice input for drug name">
+                                <svg class="mic-icon" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8a1 1 0 10-2 0A5 5 0 715 8a1 1 0 00-2 0 7.001 7.001 0 006 6.93V17H6a1 1 0 100 2h8a1 1 0 100-2h-3v-2.07z" clip-rule="evenodd"/>
+                                </svg>
+                            </button>
+                        </div>
+                        <small class="input-hint">Enter generic or brand name or use voice input</small>
                     </div>
                     
                     <div class="input-group">
                         <label for="proposedDose">Proposed Dosage</label>
-                        <input type="text" id="proposedDose" placeholder="e.g., 5mg daily, 500mg BID" autocomplete="off">
-                        <small class="input-hint">Include dose amount, unit, and frequency</small>
+                        <div class="dosage-inputs">
+                            <div class="dose-amount">
+                                <select id="doseAmount">
+                                    <option value="">Amount</option>
+                                    <option value="0.5">0.5</option>
+                                    <option value="1">1</option>
+                                    <option value="2.5">2.5</option>
+                                    <option value="5">5</option>
+                                    <option value="7.5">7.5</option>
+                                    <option value="10">10</option>
+                                    <option value="15">15</option>
+                                    <option value="20">20</option>
+                                    <option value="25">25</option>
+                                    <option value="40">40</option>
+                                    <option value="50">50</option>
+                                    <option value="75">75</option>
+                                    <option value="80">80</option>
+                                    <option value="81">81</option>
+                                    <option value="100">100</option>
+                                    <option value="200">200</option>
+                                    <option value="250">250</option>
+                                    <option value="325">325</option>
+                                    <option value="500">500</option>
+                                    <option value="750">750</option>
+                                    <option value="1000">1000</option>
+                                </select>
+                            </div>
+                            <div class="dose-unit">
+                                <select id="doseUnit">
+                                    <option value="">Unit</option>
+                                    <option value="mg">mg</option>
+                                    <option value="g">g</option>
+                                    <option value="mcg">mcg</option>
+                                    <option value="ml">ml</option>
+                                    <option value="units">units</option>
+                                    <option value="tablets">tablets</option>
+                                    <option value="capsules">capsules</option>
+                                </select>
+                            </div>
+                            <div class="dose-frequency">
+                                <select id="doseFrequency">
+                                    <option value="">Frequency</option>
+                                    <option value="once daily">once daily</option>
+                                    <option value="twice daily">twice daily</option>
+                                    <option value="three times daily">three times daily</option>
+                                    <option value="four times daily">four times daily</option>
+                                    <option value="every 4 hours">every 4 hours</option>
+                                    <option value="every 6 hours">every 6 hours</option>
+                                    <option value="every 8 hours">every 8 hours</option>
+                                    <option value="every 12 hours">every 12 hours</option>
+                                    <option value="weekly">weekly</option>
+                                    <option value="as needed">as needed</option>
+                                    <option value="before meals">before meals</option>
+                                    <option value="with meals">with meals</option>
+                                    <option value="at bedtime">at bedtime</option>
+                                </select>
+                            </div>
+                        </div>
+                        <small class="input-hint">Select dose amount, unit, and frequency</small>
                     </div>
                     
                     <div class="input-group">
@@ -248,6 +365,25 @@
                                 <span class="check-date"></span>
                             </span>
                         </div>
+
+                        <!-- Phase 3: Action Buttons for Dosage Results -->
+                        <div class="action-buttons-section">
+                            <div class="action-buttons">
+                                <button class="btn btn-secondary action-btn clear-btn" id="clearDosageResultsBtn">
+                                    <svg class="btn-icon" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fill-rule="evenodd" d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" clip-rule="evenodd"/>
+                                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414L9 13.414l3.707-3.707z" clip-rule="evenodd"/>
+                                    </svg>
+                                    <span class="btn-text">Clear Results</span>
+                                </button>
+                                <button class="btn btn-warning action-btn flag-btn" id="flagDosageForDoctorBtn">
+                                    <svg class="btn-icon" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fill-rule="evenodd" d="M3 6a3 3 0 013-3h10a1 1 0 01.8 1.6L14.25 8l2.55 3.4A1 1 0 0116 13H6a1 1 0 00-1 1v3a1 1 0 11-2 0V6z" clip-rule="evenodd"/>
+                                    </svg>
+                                    <span class="btn-text">Flag for Doctor</span>
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -268,6 +404,132 @@
                 
                 <div class="patients-grid" id="patientsGrid">
                     <!-- Patients will be populated here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Batch Prescription Review Page -->
+        <div id="batchPage" class="page-content" style="display: none;">
+            <div class="card main-card">
+                <div class="card-header">
+                    <h2>Batch Prescription Review</h2>
+                    <span class="badge badge-warning">Comprehensive Analysis</span>
+                </div>
+                
+                <div class="input-section">
+                    <div class="input-group">
+                        <label for="patientSelectBatch">Patient Context</label>
+                        <select id="patientSelectBatch">
+                            <option value="">Select patient for medication review</option>
+                            <option value="P001">Eleanor Martinez (72F) - AFib, HTN, DM</option>
+                            <option value="P002">James Chen (45M) - RA, GERD</option>
+                            <option value="P003">Sarah Johnson (28F) - Depression, Migraine</option>
+                            <option value="P004">Robert Wilson (65M) - CAD, Hyperlipidemia</option>
+                            <option value="P005">Maria Rodriguez (55F) - CKD Stage 3, HTN</option>
+                        </select>
+                        <small class="input-hint">Required for patient-specific analysis</small>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="medicationListUpload">Upload Medication List</label>
+                        <div class="file-upload-area" id="fileUploadArea">
+                            <input type="file" id="medicationListUpload" accept=".csv,.txt" style="display: none;">
+                            <div class="file-upload-content">
+                                <svg class="upload-icon" viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/>
+                                </svg>
+                                <p>Click to upload CSV or text file</p>
+                                <p class="file-hint">Or drag and drop medication list here</p>
+                            </div>
+                            <div class="file-preview" id="filePreview" style="display: none;">
+                                <div class="file-info">
+                                    <span class="file-name" id="fileName"></span>
+                                    <span class="file-size" id="fileSize"></span>
+                                </div>
+                                <button class="btn btn-sm btn-secondary" id="removeFileBtn">Remove</button>
+                            </div>
+                        </div>
+                        <small class="input-hint">Supported formats: CSV with columns (drug_name, dose, frequency) or text list</small>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="medicationTextInput">Or Enter Medications Manually</label>
+                        <textarea id="medicationTextInput" rows="6" placeholder="Enter medications line by line:
+warfarin 5mg daily
+aspirin 81mg daily  
+metformin 1000mg twice daily
+lisinopril 10mg daily"></textarea>
+                        <small class="input-hint">One medication per line with dose and frequency</small>
+                    </div>
+                </div>
+
+                <button id="analyzeBatchButton" class="btn btn-primary" disabled>
+                    <span class="btn-text">Analyze Medication List</span>
+                    <span class="btn-loader" style="display: none;">
+                        <span class="spinner"></span>
+                        Analyzing...
+                    </span>
+                </button>
+            </div>
+
+            <!-- Batch Results Container -->
+            <div id="batchResultContainer" class="result-container" style="display: none;">
+                <div class="card result-card">
+                    <div class="result-header">
+                        <div class="result-badge"></div>
+                        <div class="result-title">Comprehensive Medication Review</div>
+                    </div>
+                    
+                    <div class="result-content">
+                        <!-- Summary Statistics -->
+                        <div class="batch-summary-section">
+                            <h3>Review Summary</h3>
+                            <div class="summary-stats" id="summaryStats"></div>
+                        </div>
+
+                        <!-- Risk Prioritization -->
+                        <div class="risk-priority-section">
+                            <h3>Prioritized Risks</h3>
+                            <div class="risk-list" id="riskList"></div>
+                        </div>
+
+                        <!-- Interaction Matrix -->
+                        <div class="interaction-matrix-section">
+                            <h3>Drug Interaction Matrix</h3>
+                            <div class="interaction-matrix" id="interactionMatrix"></div>
+                        </div>
+
+                        <!-- Clinical Recommendations -->
+                        <div class="recommendations-section">
+                            <h3>Clinical Actions Required</h3>
+                            <div class="clinical-recommendations" id="clinicalRecommendations"></div>
+                        </div>
+
+                        <!-- Action Buttons -->
+                        <div class="action-buttons-section">
+                            <div class="action-buttons">
+                                <button class="btn btn-secondary action-btn clear-btn" id="clearBatchResultsBtn">
+                                    <svg class="btn-icon" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fill-rule="evenodd" d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" clip-rule="evenodd"/>
+                                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414L9 13.414l3.707-3.707z" clip-rule="evenodd"/>
+                                    </svg>
+                                    <span class="btn-text">Clear Results</span>
+                                </button>
+                                <button class="btn btn-warning action-btn flag-btn" id="flagBatchForDoctorBtn">
+                                    <svg class="btn-icon" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fill-rule="evenodd" d="M3 6a3 3 0 013-3h10a1 1 0 01.8 1.6L14.25 8l2.55 3.4A1 1 0 0116 13H6a1 1 0 00-1 1v3a1 1 0 11-2 0V6z" clip-rule="evenodd"/>
+                                    </svg>
+                                    <span class="btn-text">Flag for Doctor</span>
+                                </button>
+                                <button class="btn btn-success action-btn print-btn" id="printSummaryBtn">
+                                    <svg class="btn-icon" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fill-rule="evenodd" d="M5 4v3H4a2 2 0 00-2 2v3a2 2 0 002 2h1v2a2 2 0 002 2h6a2 2 0 002-2v-2h1a2 2 0 002-2V9a2 2 0 00-2-2h-1V4a2 2 0 00-2-2H7a2 2 0 00-2 2zm8 0H7v3h6V4zM5 14a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd"/>
+                                    </svg>
+                                    <span class="btn-text">Print Summary</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -322,7 +584,7 @@
                         <h3>System Information</h3>
                         <div class="system-info">
                             <div class="info-item">
-                                <strong>Version:</strong> Phase 2.0 - Patient Context & Dosage Validation
+                                <strong>Version:</strong> Phase 3.0 - Batch Prescription Review & Voice Input
                             </div>
                             <div class="info-item">
                                 <strong>Build:</strong> MedGuard AI with LangGraph & MCP
