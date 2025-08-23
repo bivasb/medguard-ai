@@ -111,6 +111,13 @@ class MedGuardApp {
 
         // Patient management events
         this.addPatientBtn?.addEventListener('click', () => this.showAddPatientModal());
+
+        // Settings button (in sidebar footer)
+        const settingsBtn = document.querySelector('.sidebar-settings');
+        settingsBtn?.addEventListener('click', (e) => {
+            e.preventDefault();
+            this.switchPage('settings');
+        });
     }
 
     // Sidebar management
