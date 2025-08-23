@@ -22,6 +22,8 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import express from 'express';
 import cors from 'cors';
 import fetch from 'node-fetch';
+const RxNormService = require('../../backend/services/rxnorm-service.js');
+const OpenFDAService = require('../../backend/services/openfda-service.js');
 
 /**
  * MCP Server Class
@@ -47,6 +49,10 @@ class MedGuardMCPServer {
     this.app = express();
     this.app.use(cors());
     this.app.use(express.json());
+    
+    // Initialize external services
+    this.rxNormService = new RxNormService();
+    this.openFDAService = new OpenFDAService();
     
     // Cache configuration
     this.cache = new Map();
@@ -329,90 +335,35 @@ class MedGuardMCPServer {
     await this.checkRateLimit('rxnorm');
 
     try {
-      // Try approximate match first
-      const approxUrl = `https://rxnav.nlm.nih.gov/REST/approximateTerm.json?term=${encodeURIComponent(drug_name)}&maxEntries=3`;
-      const approxResponse = await fetch(approxUrl);
-      const approxData = await approxResponse.json();
+      // Use the integrated RxNorm service instead of direct API calls
+      const result = await this.rxNormService.normalizeDrugName(drug_name);
 
-      let rxcui = null;
-      let matchedName = drug_name;
-      let matchType = 'none';
-
-      if (approxData.approximateGroup?.candidate) {
-        const candidates = Array.isArray(approxData.approximateGroup.candidate)
-          ? approxData.approximateGroup.candidate
-          : [approxData.approximateGroup.candidate];
-        
-        rxcui = candidates[0].rxcui;
-        matchedName = candidates[0].name;
-        matchType = 'approximate';
+      if (!result.success) {
+        throw new Error(result.error || `Drug not found: ${drug_name}`);
       }
 
-      // If no approximate match, try exact
-      if (!rxcui) {
-        const exactUrl = `https://rxnav.nlm.nih.gov/REST/rxcui.json?name=${encodeURIComponent(drug_name)}`;
-        const exactResponse = await fetch(exactUrl);
-        const exactData = await exactResponse.json();
-
-        if (exactData.idGroup?.rxnormId) {
-          rxcui = Array.isArray(exactData.idGroup.rxnormId)
-            ? exactData.idGroup.rxnormId[0]
-            : exactData.idGroup.rxnormId;
-          matchType = 'exact';
-        }
-      }
-
-      if (!rxcui) {
-        throw new Error(`Drug not found: ${drug_name}`);
-      }
-
-      // Get properties
-      const propsUrl = `https://rxnav.nlm.nih.gov/REST/rxcui/${rxcui}/properties.json`;
-      const propsResponse = await fetch(propsUrl);
-      const propsData = await propsResponse.json();
-
-      // Get related names if requested
-      let relatedNames = { brand_names: [], generic_names: [] };
-      if (include_relations) {
-        const relatedUrl = `https://rxnav.nlm.nih.gov/REST/rxcui/${rxcui}/related.json?tty=BN+IN`;
-        const relatedResponse = await fetch(relatedUrl);
-        const relatedData = await relatedResponse.json();
-
-        if (relatedData.relatedGroup?.conceptGroup) {
-          relatedData.relatedGroup.conceptGroup.forEach(group => {
-            if (group.conceptProperties) {
-              group.conceptProperties.forEach(prop => {
-                if (group.tty === 'BN') {
-                  relatedNames.brand_names.push(prop.name);
-                } else if (group.tty === 'IN') {
-                  relatedNames.generic_names.push(prop.name);
-                }
-              });
-            }
-          });
-        }
-      }
-
-      const result = {
-        success: true,
-        original_input: drug_name,
-        rxcui: rxcui,
-        matched_name: matchedName,
-        match_type: matchType,
-        generic_name: propsData.properties?.name || matchedName,
-        tty: propsData.properties?.tty,
-        ...relatedNames,
+      // Transform result to MCP format
+      const mcpResult = {
+        success: result.success,
+        original_input: result.originalName,
+        rxcui: result.rxcui,
+        matched_name: result.normalizedName,
+        match_type: result.source,
+        generic_name: result.normalizedName,
+        brand_names: result.brandNames?.map(b => b.name) || [],
+        active_ingredients: result.activeIngredients?.map(i => i.name) || [],
+        confidence: result.confidence || 1.0,
         timestamp: new Date().toISOString()
       };
 
       // Cache the result
-      this.addToCache(cacheKey, result);
+      this.addToCache(cacheKey, mcpResult);
 
       return {
         content: [
           {
             type: 'text',
-            text: JSON.stringify(result)
+            text: JSON.stringify(mcpResult)
           }
         ]
       };

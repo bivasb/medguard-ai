@@ -1,11 +1,12 @@
 /**
  * INTERACTION CHECKER SUBAGENT
  * 
- * Pure function subagent that checks drug-drug interactions using FDA OpenFDA API.
+ * Pure function subagent that checks drug-drug interactions using FDA OpenFDA API and RxNorm data.
  * 
  * RESPONSIBILITIES:
  * - Query FDA adverse event database for drug interactions
- * - Identify severity of interactions
+ * - Use normalized RxNorm data for accurate drug identification
+ * - Identify severity of interactions using FDA labeling data
  * - Extract mechanism and clinical significance
  * - Return structured interaction data
  * 
@@ -17,6 +18,7 @@
  */
 
 import fetch from 'node-fetch';
+const OpenFDAService = require('../../backend/services/openfda-service.js');
 
 /**
  * Interaction Checker Subagent Class
@@ -24,6 +26,9 @@ import fetch from 'node-fetch';
  */
 export class InteractionCheckerSubagent {
   constructor() {
+    // Initialize OpenFDA service for real API access
+    this.openFDAService = new OpenFDAService();
+    
     // FDA OpenFDA API base URL (FREE, no key required)
     this.baseUrl = 'https://api.fda.gov/drug';
     

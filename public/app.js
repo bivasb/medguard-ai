@@ -10,6 +10,10 @@ class MedGuardApp {
         this.isChecking = false;
         this.currentPage = 'interaction';
         
+        // Initialize logger for frontend component
+        this.logger = new MedGuardLogger('frontend');
+        this.logger.logUserAction('app_initialized', { page: 'medguard-ai' });
+        
         this.initializeElements();
         this.bindEvents();
         this.initializePages();
@@ -42,6 +46,8 @@ class MedGuardApp {
         this.patientSelectDosage = document.getElementById('patientSelectDosage');
         this.validateDosageButton = document.getElementById('validateDosageButton');
         this.dosageResultContainer = document.getElementById('dosageResultContainer');
+        this.currentMedicationsDosageGroup = document.getElementById('currentMedicationsDosageGroup');
+        this.currentMedicationsDosageDisplay = document.getElementById('currentMedicationsDosageDisplay');
 
         // Page elements
         this.pageContents = document.querySelectorAll('.page-content');
@@ -147,7 +153,15 @@ class MedGuardApp {
         });
 
         // Drug interaction events
-        this.checkButton?.addEventListener('click', () => this.handleCheck());
+        this.checkButton?.addEventListener('click', () => {
+            this.logger.logUserAction('check_interactions_click', {
+                element: 'checkButton',
+                page: this.currentPage,
+                drugsEntered: [this.drug1Input?.value, this.drug2Input?.value, this.drug3Input?.value].filter(Boolean).length,
+                patientSelected: !!this.patientSelect?.value
+            });
+            this.handleCheck();
+        });
         
         [this.drug1Input, this.drug2Input, this.drug3Input].forEach(input => {
             if (input) {
@@ -165,6 +179,12 @@ class MedGuardApp {
 
         // Patient selection events
         this.patientSelect?.addEventListener('change', () => {
+            const selectedPatient = this.patientSelect.value;
+            this.logger.logUserAction('patient_selected', {
+                element: 'patientSelect',
+                patientId: selectedPatient,
+                hasPatient: !!selectedPatient
+            });
             this.handlePatientSelection();
             this.validateInputs(); // Re-validate when patient changes
         });
@@ -191,6 +211,18 @@ class MedGuardApp {
             if (select) {
                 select.addEventListener('change', () => this.validateDosageInputs());
             }
+        });
+
+        // Dosage patient selection events
+        this.patientSelectDosage?.addEventListener('change', () => {
+            const selectedPatient = this.patientSelectDosage.value;
+            this.logger.logUserAction('patient_selected_dosage', {
+                element: 'patientSelectDosage',
+                patientId: selectedPatient,
+                hasPatient: !!selectedPatient
+            });
+            this.handleDosagePatientSelection();
+            this.validateDosageInputs();
         });
 
         // Patient management events
@@ -662,6 +694,43 @@ class MedGuardApp {
             // Hide medications display when no patient is selected
             this.currentMedicationsGroup.style.display = 'none';
         }
+    }
+
+    handleDosagePatientSelection() {
+        const selectedPatientId = this.patientSelectDosage?.value;
+        
+        if (selectedPatientId && this.patients) {
+            const patient = this.patients.find(p => p.id === selectedPatientId);
+            if (patient) {
+                this.displayCurrentMedicationsForDosage(patient);
+            }
+        } else {
+            // Hide medications display when no patient is selected
+            this.currentMedicationsDosageGroup.style.display = 'none';
+        }
+    }
+
+    displayCurrentMedicationsForDosage(patient) {
+        if (!patient.currentMedications || patient.currentMedications.length === 0) {
+            this.currentMedicationsDosageDisplay.innerHTML = '<div class="no-medications">No current medications on file</div>';
+            this.currentMedicationsDosageGroup.style.display = 'block';
+            return;
+        }
+
+        const medicationsHtml = `
+            <div class="medications-grid">
+                ${patient.currentMedications.map(med => `
+                    <div class="medication-item">
+                        <div class="medication-name">${med.name}</div>
+                        <div class="medication-details">${med.frequency}</div>
+                        <div class="medication-dose">${med.dose}</div>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+
+        this.currentMedicationsDosageDisplay.innerHTML = medicationsHtml;
+        this.currentMedicationsDosageGroup.style.display = 'block';
     }
 
     displayCurrentMedications(patient) {
@@ -1301,9 +1370,87 @@ class MedGuardApp {
     }
 
     async checkInteractions(drugs, patientId = null) {
-        // Simulate the primary agent response for Phase 2
-        const mockResult = await this.simulatePrimaryAgent(drugs, patientId);
-        return mockResult;
+        // Log the interaction check request
+        this.logger.logDataFlow({
+            action: 'interaction_check_request',
+            path: '/api/check-interaction',
+            method: 'POST',
+            payload: {
+                drugCount: drugs.length,
+                drugs: drugs,
+                patientId: patientId,
+                hasPatientContext: !!patientId
+            },
+            metadata: {
+                source: 'frontend',
+                target: 'backend'
+            }
+        });
+
+        try {
+            // Try to call real API first
+            const apiResponse = await this.callRealInteractionAPI(drugs, patientId);
+            
+            // Log successful API call
+            this.logger.logApiCall({
+                service: 'medguard-api',
+                endpoint: '/api/check-interaction',
+                method: 'POST',
+                requestData: { drugs, patientId },
+                responseData: apiResponse,
+                success: true,
+                fallback: false
+            });
+
+            return apiResponse;
+        } catch (error) {
+            // Log API failure and fallback
+            this.logger.logApiCall({
+                service: 'medguard-api',
+                endpoint: '/api/check-interaction',
+                method: 'POST',
+                requestData: { drugs, patientId },
+                success: false,
+                error: error.message,
+                fallback: true
+            });
+
+            // Fall back to mock data
+            console.log('🔄 Falling back to mock data due to API error:', error.message);
+            const mockResult = await this.simulatePrimaryAgent(drugs, patientId);
+            
+            // Log mock data usage
+            this.logger.logApiCall({
+                service: 'mock',
+                endpoint: 'simulatePrimaryAgent',
+                method: 'LOCAL',
+                requestData: { drugs, patientId },
+                responseData: mockResult,
+                success: true,
+                fallback: true
+            });
+
+            return mockResult;
+        }
+    }
+
+    async callRealInteractionAPI(drugs, patientId = null) {
+        const response = await fetch(`${this.apiBaseUrl}/api/check-interaction`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                drugs: drugs,
+                patient_id: patientId
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error(`API request failed: ${response.status} ${response.statusText}`);
+        }
+
+        return await response.json();
     }
 
     async simulatePrimaryAgent(drugs, patientId) {
@@ -1506,7 +1653,7 @@ class MedGuardApp {
 
         badge.textContent = riskIcons[result.risk_level] || '?';
         badge.className = `result-badge ${riskClasses[result.risk_level] || ''}`;
-        title.textContent = `${result.risk_level}: ${result.drugs_checked.join(' + ')}`;
+        title.textContent = `${result.risk_level}: ${(result.drugs_checked || []).join(' + ')}`;
 
         // Set explanation
         explanation.textContent = result.explanation;
@@ -1531,10 +1678,10 @@ class MedGuardApp {
             const patient = result.patient_context;
             
             patientDetails.innerHTML = `
-                <div><strong>${patient.name}</strong> (${patient.age}${patient.gender}, ${patient.conditions.map(c => c.condition).join(', ')})</div>
-                <div><strong>Current Medications:</strong> ${patient.current_medications.join(', ')}</div>
-                ${patient.allergies.length > 0 ? `<div><strong>Allergies:</strong> ${patient.allergies.join(', ')}</div>` : ''}
-                ${Object.keys(patient.lab_values).length > 0 ? `<div><strong>Recent Labs:</strong> ${Object.entries(patient.lab_values).map(([key, val]) => `${key}: ${val.value}`).join(', ')}</div>` : ''}
+                <div><strong>${patient.name || 'Unknown Patient'}</strong> (${patient.age || 'N/A'}${patient.gender || ''}, ${(patient.conditions || []).map(c => (typeof c === 'object' ? c.condition : c)).join(', ')})</div>
+                <div><strong>Current Medications:</strong> ${(patient.current_medications || []).join(', ')}</div>
+                ${(patient.allergies || []).length > 0 ? `<div><strong>Allergies:</strong> ${patient.allergies.join(', ')}</div>` : ''}
+                ${Object.keys(patient.lab_values || {}).length > 0 ? `<div><strong>Recent Labs:</strong> ${Object.entries(patient.lab_values).map(([key, val]) => `${key}: ${val?.value || val}`).join(', ')}</div>` : ''}
             `;
         } else {
             patientSection.style.display = 'none';

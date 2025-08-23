@@ -8,6 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="logging-client.js"></script>
 </head>
 <body>
     <div class="gradient-background"></div>
@@ -375,6 +376,15 @@
                             <option value="P005">Maria Rodriguez (55F) - CKD Stage 3, HTN</option>
                         </select>
                         <small class="input-hint">Required for patient-specific validation</small>
+                    </div>
+
+                    <!-- Current Medications Display for Dosage Page -->
+                    <div class="input-group" id="currentMedicationsDosageGroup" style="display: none;">
+                        <label>Current Medications</label>
+                        <div class="current-medications-display" id="currentMedicationsDosageDisplay">
+                            <!-- Medications will be populated here -->
+                        </div>
+                        <small class="input-hint">Patient's current medication regimen</small>
                     </div>
                 </div>
 

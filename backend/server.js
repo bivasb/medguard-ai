@@ -9,6 +9,8 @@ const cors = require('cors');
 const multer = require('multer');
 const OpenAI = require('openai');
 const { QdrantClient } = require('@qdrant/js-client-rest');
+const RxNormService = require('./services/rxnorm-service');
+const OpenFDAService = require('./services/openfda-service');
 require('dotenv').config();
 
 const app = express();
@@ -24,6 +26,10 @@ const qdrant = new QdrantClient({
     url: process.env.QDRANT_URL || 'http://localhost:6333',
     apiKey: process.env.QDRANT_API_KEY
 });
+
+// Initialize FDA and RxNorm services
+const rxNormService = new RxNormService();
+const openFDAService = new OpenFDAService();
 
 // Configure multer for audio file uploads
 const upload = multer({
