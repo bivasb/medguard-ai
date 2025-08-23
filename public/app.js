@@ -166,9 +166,10 @@ class MedGuardApp {
         // Patient selection events
         this.patientSelect?.addEventListener('change', () => {
             this.handlePatientSelection();
+            this.validateInputs(); // Re-validate when patient changes
         });
 
-        [this.drug1Input, this.drug2Input].forEach(input => {
+        [this.drug1Input, this.drug2Input, this.drug3Input].forEach(input => {
             if (input) {
                 input.addEventListener('input', () => this.validateInputs());
             }
@@ -670,17 +671,17 @@ class MedGuardApp {
             return;
         }
 
-        const medicationsHtml = patient.currentMedications.map(med => {
-            return `
-                <div class="medication-item">
-                    <div class="medication-info">
+        const medicationsHtml = `
+            <div class="medications-grid">
+                ${patient.currentMedications.map(med => `
+                    <div class="medication-item">
                         <div class="medication-name">${med.name}</div>
-                        <div class="medication-details">${med.dose} ${med.frequency}</div>
+                        <div class="medication-details">${med.frequency}</div>
+                        <div class="medication-dose">${med.dose}</div>
                     </div>
-                    <div class="medication-dose">${med.dose}</div>
-                </div>
-            `;
-        }).join('');
+                `).join('')}
+            </div>
+        `;
 
         this.currentMedicationsDisplay.innerHTML = medicationsHtml;
         this.currentMedicationsGroup.style.display = 'block';
@@ -1221,8 +1222,35 @@ class MedGuardApp {
     validateInputs() {
         const drug1 = this.drug1Input?.value.trim();
         const drug2 = this.drug2Input?.value.trim();
+        const drug3 = this.drug3Input?.value.trim();
+        const selectedPatient = this.patientSelect?.value;
         
-        const isValid = drug1 && drug1.length >= 2 && drug2 && drug2.length >= 2;
+        // Count manually entered drugs (minimum 2 characters each)
+        const manualDrugs = [drug1, drug2, drug3].filter(drug => drug && drug.length >= 2);
+        const manualDrugCount = manualDrugs.length;
+        
+        // Get patient's current medications count
+        let patientMedCount = 0;
+        if (selectedPatient && this.patients) {
+            const patient = this.patients.find(p => p.id === selectedPatient);
+            if (patient && patient.currentMedications) {
+                patientMedCount = patient.currentMedications.length;
+            }
+        }
+        
+        // Enable check interactions if:
+        // 1. At least 2 manual drugs are entered, OR
+        // 2. At least 1 manual drug + patient with medications is selected
+        let isValid = false;
+        
+        if (manualDrugCount >= 2) {
+            // Traditional case: 2+ drugs entered manually
+            isValid = true;
+        } else if (manualDrugCount >= 1 && selectedPatient && patientMedCount > 0) {
+            // New case: 1 drug + patient with current medications
+            isValid = true;
+        }
+        
         if (this.checkButton) {
             this.checkButton.disabled = !isValid || this.isChecking;
         }
@@ -1239,11 +1267,25 @@ class MedGuardApp {
         const drug1 = this.drug1Input.value.trim();
         const drug2 = this.drug2Input.value.trim();
         const drug3 = this.drug3Input.value.trim();
-
-        drugs.push(drug1, drug2);
-        if (drug3) drugs.push(drug3);
-
         const patientId = this.patientSelect.value || null;
+
+        // Add manually entered drugs (minimum 2 characters each)
+        [drug1, drug2, drug3].forEach(drug => {
+            if (drug && drug.length >= 2) {
+                drugs.push(drug);
+            }
+        });
+
+        // If patient is selected, add their current medications to the interaction check
+        if (patientId && this.patients) {
+            const patient = this.patients.find(p => p.id === patientId);
+            if (patient && patient.currentMedications) {
+                patient.currentMedications.forEach(med => {
+                    // Add patient medications to the drugs list for comprehensive interaction checking
+                    drugs.push(med.name);
+                });
+            }
+        }
 
         this.setLoadingState(true);
         
