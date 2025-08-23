@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "medguard-ai": {
+      "command": "node",
+      "args": [
+        "/Users/bivasb/Documents/medguard-ai/src/mcp/server.js",
+        "--stdio"
+      ],
+      "env": {
+        "NODE_ENV": "production"
+      }
+    }
+  }
+}
