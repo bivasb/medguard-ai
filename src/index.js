@@ -13,6 +13,7 @@ import cors from 'cors';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import dotenv from 'dotenv';
+import fetch from 'node-fetch';
 import PrimaryAgent from './agents/primary-agent.js';
 
 // Load environment variables
@@ -315,6 +316,37 @@ class MedGuardAIServer {
         uptime: process.uptime(),
         memory_usage: process.memoryUsage()
       });
+    });
+
+    // Image OCR processing endpoint (proxy to backend)
+    this.app.post('/api/process-image-ocr', async (req, res) => {
+      try {
+        const backendUrl = process.env.BACKEND_URL || 'http://localhost:3002';
+        const response = await fetch(`${backendUrl}/api/process-image-ocr`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(req.body)
+        });
+
+        const result = await response.json();
+        
+        if (!response.ok) {
+          return res.status(response.status).json(result);
+        }
+
+        res.json(result);
+
+      } catch (error) {
+        console.error('❌ Error in OCR processing:', error);
+        
+        res.status(500).json({
+          error: 'Internal server error during OCR processing',
+          message: error.message,
+          code: 'OCR_PROCESSING_FAILED'
+        });
+      }
     });
 
     // Serve main app on root

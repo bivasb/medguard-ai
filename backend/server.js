@@ -35,7 +35,7 @@ const upload = multer({
 
 // Middleware
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '50mb' })); // Increase limit for image data
 
 // Health check endpoint
 app.get('/health', (req, res) => {
@@ -289,6 +289,118 @@ function fallbackDrugSearch(query, limit = 5) {
 
     return matches.sort((a, b) => b.score - a.score).slice(0, limit);
 }
+
+/**
+ * Image OCR Processing Endpoint
+ * Uses OpenAI Vision to extract medication information from images
+ */
+app.post('/api/process-image-ocr', async (req, res) => {
+    try {
+        const { image, prompt } = req.body;
+        
+        if (!image) {
+            return res.status(400).json({ error: 'No image data provided' });
+        }
+
+        // Validate and process image data
+        let imageUrl = image;
+        
+        // Ensure the image has proper data URL format
+        if (!imageUrl.startsWith('data:image/')) {
+            return res.status(400).json({ 
+                error: 'Invalid image format. Please provide a valid data URL.' 
+            });
+        }
+
+        // Process image with OpenAI Vision
+        const response = await openai.chat.completions.create({
+            model: "gpt-4o", // Use GPT-4 with vision capabilities
+            messages: [
+                {
+                    role: "user",
+                    content: [
+                        {
+                            type: "text",
+                            text: prompt || "Extract all medications, dosages, and frequencies from this image. Return ONLY a simple list with one medication per line in the format: 'medication_name dosage frequency'. Do not include any explanatory text, headers, or formatting."
+                        },
+                        {
+                            type: "image_url",
+                            image_url: {
+                                url: imageUrl,
+                                detail: "high" // Use high detail for better OCR
+                            }
+                        }
+                    ]
+                }
+            ],
+            max_tokens: 1000,
+            temperature: 0.1
+        });
+
+        const extractedText = response.choices[0].message.content;
+        
+        // Parse medications from the response
+        const medications = [];
+        
+        // Try to extract structured medication data
+        const lines = extractedText.split('\n')
+            .map(line => line.trim())
+            .filter(line => line.length > 0 && !line.startsWith('Based on') && !line.startsWith('I can see') && !line.startsWith('The image'));
+        
+        lines.forEach(line => {
+            // Remove bullet points, numbers, etc.
+            const cleanLine = line.replace(/^[-•*\d+.)\s]+/, '').trim();
+            
+            // Skip empty lines or explanatory text
+            if (cleanLine.length > 3 && 
+                !cleanLine.toLowerCase().startsWith('medication') &&
+                !cleanLine.toLowerCase().includes('prescription') &&
+                !cleanLine.toLowerCase().includes('cannot') &&
+                !cleanLine.toLowerCase().includes('unable')) {
+                medications.push(cleanLine);
+            }
+        });
+
+        // If no structured medications found, try to extract from free text
+        if (medications.length === 0) {
+            const commonMedications = [
+                'metformin', 'lisinopril', 'amlodipine', 'simvastatin', 'omeprazole',
+                'losartan', 'hydrochlorothiazide', 'gabapentin', 'sertraline', 'tramadol',
+                'aspirin', 'ibuprofen', 'warfarin', 'prednisone', 'furosemide',
+                'levothyroxine', 'albuterol', 'insulin', 'metoprolol', 'atorvastatin'
+            ];
+            
+            const text = extractedText.toLowerCase();
+            commonMedications.forEach(med => {
+                if (text.includes(med)) {
+                    // Try to extract dosage information around the medication
+                    const regex = new RegExp(`${med}[\\s\\w]*\\d+[\\w\\s]*`, 'i');
+                    const match = text.match(regex);
+                    if (match) {
+                        medications.push(match[0].trim());
+                    } else {
+                        medications.push(med);
+                    }
+                }
+            });
+        }
+
+        console.log(`🔍 OCR processed image, extracted ${medications.length} medications`);
+        
+        res.json({
+            success: true,
+            medications: medications.slice(0, 10), // Limit to 10 medications
+            rawText: extractedText
+        });
+
+    } catch (error) {
+        console.error('Image OCR processing error:', error);
+        res.status(500).json({ 
+            error: 'Failed to process image',
+            message: error.message 
+        });
+    }
+});
 
 /**
  * Calculate string similarity using Levenshtein distance

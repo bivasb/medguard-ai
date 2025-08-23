@@ -1057,6 +1057,25 @@ body {
 }
 
 /* Patient Management */
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.add-patient-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    font-size: 0.9rem;
+}
+
+.add-patient-btn svg {
+    width: 16px;
+    height: 16px;
+}
+
 .patients-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
@@ -1291,14 +1310,29 @@ body {
 }
 
 /* Batch Review Components */
+.upload-methods {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.upload-method {
+    flex: 1;
+}
+
 .file-upload-area {
     border: 2px dashed rgba(59, 130, 246, 0.3);
     border-radius: 12px;
-    padding: 2rem;
+    padding: 1.5rem;
     text-align: center;
     background: rgba(59, 130, 246, 0.05);
     transition: all 0.3s ease;
     cursor: pointer;
+    min-height: 140px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
 }
 
 .file-upload-area:hover {
@@ -2157,4 +2191,158 @@ body {
     font-size: 0.875rem;
     color: var(--text-secondary);
     margin-top: 0.25rem;
+}
+
+/* Picture upload styles */
+.picture-thumbnail {
+    width: 60px;
+    height: 60px;
+    object-fit: cover;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+}
+
+.picture-info {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+/* Camera capture styles */
+.camera-preview {
+    padding: 1rem;
+    background: var(--surface);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    margin-top: 1rem;
+}
+
+.camera-controls {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: center;
+    margin-top: 1rem;
+}
+
+#cameraVideo {
+    width: 100%;
+    max-width: 400px;
+    height: auto;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    margin: 0 auto;
+    display: block;
+}
+
+.captured-image {
+    width: 100%;
+    max-width: 400px;
+    height: auto;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    margin: 0 auto;
+    display: block;
+}
+
+/* Current Medications Display */
+.current-medications-display {
+    background: var(--surface);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 1rem;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.medication-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem;
+    margin-bottom: 0.5rem;
+    background: rgba(59, 130, 246, 0.05);
+    border-radius: 6px;
+    border-left: 3px solid var(--primary-color);
+}
+
+.medication-item:last-child {
+    margin-bottom: 0;
+}
+
+.medication-name {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.medication-details {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    margin-top: 0.25rem;
+}
+
+.medication-dose {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    font-family: 'SF Mono', 'Monaco', monospace;
+}
+
+.no-medications {
+    text-align: center;
+    color: var(--text-muted);
+    font-style: italic;
+    padding: 2rem;
+}
+
+/* Quick upload methods for drug interactions */
+.quick-upload-methods {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.quick-upload-method {
+    flex: 1;
+}
+
+.quick-upload-area {
+    min-height: 100px;
+    padding: 1rem;
+}
+
+.quick-upload-area .file-upload-content {
+    gap: 0.25rem;
+}
+
+.quick-upload-area .upload-icon {
+    width: 32px;
+    height: 32px;
+}
+
+.quick-upload-area p {
+    font-size: 0.875rem;
+    margin: 0;
+}
+
+/* Responsive grid for upload methods */
+@media (max-width: 768px) {
+    .upload-methods {
+        grid-template-columns: 1fr;
+        gap: 0.5rem;
+    }
+    
+    .quick-upload-methods {
+        grid-template-columns: 1fr;
+        gap: 0.5rem;
+    }
+    
+    .file-upload-area {
+        padding: 1rem;
+        min-height: 120px;
+    }
+    
+    .quick-upload-area {
+        min-height: 80px;
+        padding: 0.75rem;
+    }
 }

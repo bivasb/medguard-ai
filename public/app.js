@@ -64,6 +64,48 @@ class MedGuardApp {
         this.analyzeBatchButton = document.getElementById('analyzeBatchButton');
         this.batchResultContainer = document.getElementById('batchResultContainer');
         
+        // Picture upload elements
+        this.pictureUpload = document.getElementById('pictureUpload');
+        this.pictureUploadArea = document.getElementById('pictureUploadArea');
+        this.picturePreview = document.getElementById('picturePreview');
+        this.pictureThumb = document.getElementById('pictureThumb');
+        this.pictureName = document.getElementById('pictureName');
+        this.removePictureBtn = document.getElementById('removePictureBtn');
+        
+        // Camera capture elements
+        this.cameraArea = document.getElementById('cameraArea');
+        this.cameraPreview = document.getElementById('cameraPreview');
+        this.cameraVideo = document.getElementById('cameraVideo');
+        this.cameraCanvas = document.getElementById('cameraCanvas');
+        this.capturedImage = document.getElementById('capturedImage');
+        this.captureBtn = document.getElementById('captureBtn');
+        this.retakeBtn = document.getElementById('retakeBtn');
+        this.stopCameraBtn = document.getElementById('stopCameraBtn');
+        
+        // Camera state
+        this.cameraStream = null;
+        this.capturedImageData = null;
+        
+        // Current medications display
+        this.currentMedicationsGroup = document.getElementById('currentMedicationsGroup');
+        this.currentMedicationsDisplay = document.getElementById('currentMedicationsDisplay');
+        
+        // Quick upload elements for drug interactions
+        this.quickPictureUpload = document.getElementById('quickPictureUpload');
+        this.quickPictureUploadArea = document.getElementById('quickPictureUploadArea');
+        this.quickCameraArea = document.getElementById('quickCameraArea');
+        this.quickCameraPreview = document.getElementById('quickCameraPreview');
+        this.quickCameraVideo = document.getElementById('quickCameraVideo');
+        this.quickCameraCanvas = document.getElementById('quickCameraCanvas');
+        this.quickCapturedImage = document.getElementById('quickCapturedImage');
+        this.quickCaptureBtn = document.getElementById('quickCaptureBtn');
+        this.quickRetakeBtn = document.getElementById('quickRetakeBtn');
+        this.quickStopCameraBtn = document.getElementById('quickStopCameraBtn');
+        
+        // Quick upload state
+        this.quickCameraStream = null;
+        this.quickCapturedImageData = null;
+        
         // Phase 3 action buttons
         this.clearResultsBtn = document.getElementById('clearResultsBtn');
         this.flagForDoctorBtn = document.getElementById('flagForDoctorBtn');
@@ -121,6 +163,11 @@ class MedGuardApp {
             btn.addEventListener('click', () => this.handleScenario(btn));
         });
 
+        // Patient selection events
+        this.patientSelect?.addEventListener('change', () => {
+            this.handlePatientSelection();
+        });
+
         [this.drug1Input, this.drug2Input].forEach(input => {
             if (input) {
                 input.addEventListener('input', () => this.validateInputs());
@@ -147,6 +194,9 @@ class MedGuardApp {
 
         // Patient management events
         this.addPatientBtn?.addEventListener('click', () => this.showAddPatientModal());
+        
+        // Header add patient button
+        document.getElementById('addPatientHeaderBtn')?.addEventListener('click', () => this.showAddPatientModal());
 
         // Settings button (in sidebar footer)
         const settingsBtn = document.querySelector('.sidebar-settings');
@@ -175,6 +225,31 @@ class MedGuardApp {
             this.updatePatternAnalytics();
             this.showNotification('Pattern analytics refreshed', 'success');
         });
+
+        // Quick upload events for drug interactions
+        this.quickPictureUploadArea?.addEventListener('click', () => {
+            this.quickPictureUpload?.click();
+        });
+
+        this.quickPictureUpload?.addEventListener('change', (e) => {
+            this.handleQuickPictureUpload(e.target.files[0]);
+        });
+
+        this.quickCameraArea?.addEventListener('click', () => {
+            this.startQuickCamera();
+        });
+
+        this.quickCaptureBtn?.addEventListener('click', () => {
+            this.captureQuickPhoto();
+        });
+
+        this.quickRetakeBtn?.addEventListener('click', () => {
+            this.retakeQuickPhoto();
+        });
+
+        this.quickStopCameraBtn?.addEventListener('click', () => {
+            this.stopQuickCamera();
+        });
     }
 
     // Sidebar management
@@ -201,6 +276,14 @@ class MedGuardApp {
             item.classList.toggle('active', item.dataset.page === page);
         });
 
+        // Hide result containers when switching pages
+        if (this.resultContainer) {
+            this.resultContainer.style.display = 'none';
+        }
+        if (this.dosageResultContainer) {
+            this.dosageResultContainer.style.display = 'none';
+        }
+
         // Show/hide page content
         if (page === 'interaction') {
             this.interactionPage.style.display = 'block';
@@ -208,6 +291,8 @@ class MedGuardApp {
             this.pageContents.forEach(content => {
                 content.style.display = 'none';
             });
+            // Refresh patient medications display if patient is selected
+            this.handlePatientSelection();
         } else {
             this.interactionPage.style.display = 'none';
             this.interactionScenarios.style.display = 'none';
@@ -447,11 +532,76 @@ class MedGuardApp {
         try {
             // In a real app, this would fetch from the server
             this.patients = [
-                { id: 'P001', name: 'Eleanor Martinez', age: 72, gender: 'F', conditions: ['AFib', 'HTN', 'DM'], weight_kg: 68, eGFR: 45 },
-                { id: 'P002', name: 'James Chen', age: 45, gender: 'M', conditions: ['RA', 'GERD'], weight_kg: 75, eGFR: 85 },
-                { id: 'P003', name: 'Sarah Johnson', age: 28, gender: 'F', conditions: ['Depression', 'Migraine'], weight_kg: 62, eGFR: 95 },
-                { id: 'P004', name: 'Robert Wilson', age: 65, gender: 'M', conditions: ['CAD', 'Hyperlipidemia'], weight_kg: 82, eGFR: 72 },
-                { id: 'P005', name: 'Maria Rodriguez', age: 55, gender: 'F', conditions: ['CKD Stage 3', 'HTN'], weight_kg: 58, eGFR: 32 }
+                { 
+                    id: 'P001', 
+                    name: 'Eleanor Martinez', 
+                    age: 72, 
+                    gender: 'F', 
+                    conditions: ['AFib', 'HTN', 'DM'], 
+                    weight_kg: 68, 
+                    eGFR: 45,
+                    currentMedications: [
+                        { name: 'warfarin', dose: '5mg', frequency: 'daily' },
+                        { name: 'metoprolol', dose: '50mg', frequency: 'twice daily' },
+                        { name: 'metformin', dose: '1000mg', frequency: 'twice daily' },
+                        { name: 'lisinopril', dose: '10mg', frequency: 'daily' }
+                    ]
+                },
+                { 
+                    id: 'P002', 
+                    name: 'James Chen', 
+                    age: 45, 
+                    gender: 'M', 
+                    conditions: ['RA', 'GERD'], 
+                    weight_kg: 75, 
+                    eGFR: 85,
+                    currentMedications: [
+                        { name: 'methotrexate', dose: '15mg', frequency: 'weekly' },
+                        { name: 'folic acid', dose: '5mg', frequency: 'weekly' },
+                        { name: 'omeprazole', dose: '20mg', frequency: 'daily' }
+                    ]
+                },
+                { 
+                    id: 'P003', 
+                    name: 'Sarah Johnson', 
+                    age: 28, 
+                    gender: 'F', 
+                    conditions: ['Depression', 'Migraine'], 
+                    weight_kg: 62, 
+                    eGFR: 95,
+                    currentMedications: [
+                        { name: 'sertraline', dose: '100mg', frequency: 'daily' },
+                        { name: 'sumatriptan', dose: '50mg', frequency: 'PRN' }
+                    ]
+                },
+                { 
+                    id: 'P004', 
+                    name: 'Robert Wilson', 
+                    age: 65, 
+                    gender: 'M', 
+                    conditions: ['CAD', 'Hyperlipidemia'], 
+                    weight_kg: 82, 
+                    eGFR: 72,
+                    currentMedications: [
+                        { name: 'atorvastatin', dose: '40mg', frequency: 'daily' },
+                        { name: 'aspirin', dose: '81mg', frequency: 'daily' },
+                        { name: 'metoprolol', dose: '25mg', frequency: 'twice daily' }
+                    ]
+                },
+                { 
+                    id: 'P005', 
+                    name: 'Maria Rodriguez', 
+                    age: 55, 
+                    gender: 'F', 
+                    conditions: ['CKD Stage 3', 'HTN'], 
+                    weight_kg: 58, 
+                    eGFR: 32,
+                    currentMedications: [
+                        { name: 'lisinopril', dose: '5mg', frequency: 'daily' },
+                        { name: 'furosemide', dose: '20mg', frequency: 'daily' },
+                        { name: 'calcium carbonate', dose: '500mg', frequency: 'twice daily' }
+                    ]
+                }
             ];
 
             this.renderPatients(this.patients);
@@ -497,6 +647,43 @@ class MedGuardApp {
             allergies: [],
             pregnancy_status: patient.gender === 'F' && patient.age < 50 ? 'unknown' : 'not_applicable'
         };
+    }
+
+    handlePatientSelection() {
+        const selectedPatientId = this.patientSelect?.value;
+        
+        if (selectedPatientId && this.patients) {
+            const patient = this.patients.find(p => p.id === selectedPatientId);
+            if (patient) {
+                this.displayCurrentMedications(patient);
+            }
+        } else {
+            // Hide medications display when no patient is selected
+            this.currentMedicationsGroup.style.display = 'none';
+        }
+    }
+
+    displayCurrentMedications(patient) {
+        if (!patient.currentMedications || patient.currentMedications.length === 0) {
+            this.currentMedicationsDisplay.innerHTML = '<div class="no-medications">No current medications on file</div>';
+            this.currentMedicationsGroup.style.display = 'block';
+            return;
+        }
+
+        const medicationsHtml = patient.currentMedications.map(med => {
+            return `
+                <div class="medication-item">
+                    <div class="medication-info">
+                        <div class="medication-name">${med.name}</div>
+                        <div class="medication-details">${med.dose} ${med.frequency}</div>
+                    </div>
+                    <div class="medication-dose">${med.dose}</div>
+                </div>
+            `;
+        }).join('');
+
+        this.currentMedicationsDisplay.innerHTML = medicationsHtml;
+        this.currentMedicationsGroup.style.display = 'block';
     }
 
     renderPatients(patients) {
@@ -1656,6 +1843,36 @@ class MedGuardApp {
         this.analyzeBatchButton?.addEventListener('click', () => {
             this.handleBatchAnalysis();
         });
+        
+        // Picture upload events
+        this.pictureUploadArea?.addEventListener('click', () => {
+            this.pictureUpload?.click();
+        });
+
+        this.pictureUpload?.addEventListener('change', (e) => {
+            this.handlePictureUpload(e.target.files[0]);
+        });
+
+        this.removePictureBtn?.addEventListener('click', () => {
+            this.clearPictureUpload();
+        });
+        
+        // Camera capture events
+        this.cameraArea?.addEventListener('click', () => {
+            this.startCamera();
+        });
+
+        this.captureBtn?.addEventListener('click', () => {
+            this.capturePhoto();
+        });
+
+        this.retakeBtn?.addEventListener('click', () => {
+            this.retakePhoto();
+        });
+
+        this.stopCameraBtn?.addEventListener('click', () => {
+            this.stopCamera();
+        });
     }
 
     handleFileUpload(file) {
@@ -1704,8 +1921,9 @@ class MedGuardApp {
         const hasPatient = this.patientSelectBatch?.value;
         const hasFile = this.uploadedFileContent;
         const hasText = this.medicationTextInput?.value.trim();
+        const hasImage = this.uploadedImageData || this.capturedImageData;
         
-        const isValid = hasPatient && (hasFile || hasText);
+        const isValid = hasPatient && (hasFile || hasText || hasImage);
         
         if (this.analyzeBatchButton) {
             this.analyzeBatchButton.disabled = !isValid;
@@ -1871,6 +2089,338 @@ class MedGuardApp {
         this.batchResultContainer.scrollIntoView({ behavior: 'smooth' });
 
         this.showNotification('Batch analysis complete', 'success');
+    }
+
+    // Picture upload methods
+    handlePictureUpload(file) {
+        if (!file) return;
+        
+        if (!file.type.startsWith('image/')) {
+            this.showNotification('Please select an image file', 'error');
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            this.pictureThumb.src = e.target.result;
+            this.pictureName.textContent = file.name;
+            
+            // Hide upload area, show preview
+            this.pictureUploadArea.querySelector('.file-upload-content').style.display = 'none';
+            this.picturePreview.style.display = 'flex';
+            
+            // Store the image data for OCR processing
+            this.uploadedImageData = e.target.result;
+            
+            // Process with OpenAI Vision OCR
+            this.processImageWithOCR(e.target.result);
+        };
+        
+        reader.readAsDataURL(file);
+    }
+
+    clearPictureUpload() {
+        this.uploadedImageData = null;
+        this.pictureUpload.value = '';
+        this.pictureUploadArea.querySelector('.file-upload-content').style.display = 'flex';
+        this.picturePreview.style.display = 'none';
+        this.validateBatchInputs();
+    }
+
+    // Camera capture methods
+    async startCamera() {
+        try {
+            this.cameraStream = await navigator.mediaDevices.getUserMedia({ 
+                video: { 
+                    width: { ideal: 1280 },
+                    height: { ideal: 720 }
+                } 
+            });
+            
+            this.cameraVideo.srcObject = this.cameraStream;
+            
+            // Hide upload content, show camera
+            this.cameraArea.querySelector('.file-upload-content').style.display = 'none';
+            this.cameraPreview.style.display = 'block';
+            this.cameraVideo.style.display = 'block';
+            this.captureBtn.style.display = 'inline-block';
+            this.stopCameraBtn.style.display = 'inline-block';
+            
+        } catch (error) {
+            console.error('Error accessing camera:', error);
+            let message = 'Unable to access camera. ';
+            
+            if (error.name === 'NotAllowedError') {
+                message += 'Please allow camera access and try again.';
+            } else if (error.name === 'NotFoundError') {
+                message += 'No camera found on this device.';
+            } else if (error.name === 'NotSupportedError') {
+                message += 'Camera not supported on this browser.';
+            } else {
+                message += 'Please check permissions and try again.';
+            }
+            
+            this.showNotification(message, 'error');
+            
+            // Reset UI on error
+            this.cameraArea.querySelector('.file-upload-content').style.display = 'flex';
+            this.cameraPreview.style.display = 'none';
+        }
+    }
+
+    capturePhoto() {
+        if (!this.cameraStream) return;
+        
+        // Set canvas size to video dimensions
+        this.cameraCanvas.width = this.cameraVideo.videoWidth;
+        this.cameraCanvas.height = this.cameraVideo.videoHeight;
+        
+        // Draw current video frame to canvas
+        const ctx = this.cameraCanvas.getContext('2d');
+        ctx.drawImage(this.cameraVideo, 0, 0);
+        
+        // Get image data
+        const imageDataUrl = this.cameraCanvas.toDataURL('image/jpeg', 0.8);
+        
+        // Show captured image
+        this.capturedImage.src = imageDataUrl;
+        this.cameraVideo.style.display = 'none';
+        this.capturedImage.style.display = 'block';
+        
+        // Update buttons
+        this.captureBtn.style.display = 'none';
+        this.retakeBtn.style.display = 'inline-block';
+        
+        // Store captured data
+        this.capturedImageData = imageDataUrl;
+        
+        // Process with OpenAI Vision OCR
+        this.processImageWithOCR(imageDataUrl);
+    }
+
+    retakePhoto() {
+        this.capturedImage.style.display = 'none';
+        this.cameraVideo.style.display = 'block';
+        this.captureBtn.style.display = 'inline-block';
+        this.retakeBtn.style.display = 'none';
+        this.capturedImageData = null;
+    }
+
+    stopCamera() {
+        if (this.cameraStream) {
+            this.cameraStream.getTracks().forEach(track => track.stop());
+            this.cameraStream = null;
+        }
+        
+        // Reset UI
+        this.cameraArea.querySelector('.file-upload-content').style.display = 'flex';
+        this.cameraPreview.style.display = 'none';
+        this.cameraVideo.style.display = 'none';
+        this.capturedImage.style.display = 'none';
+        this.captureBtn.style.display = 'none';
+        this.retakeBtn.style.display = 'none';
+        this.stopCameraBtn.style.display = 'none';
+        this.capturedImageData = null;
+    }
+
+    // OpenAI Vision OCR processing
+    async processImageWithOCR(imageData) {
+        try {
+            this.showNotification('Processing image with AI...', 'info');
+            
+            const response = await fetch('/api/process-image-ocr', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    image: imageData,
+                    prompt: "Extract all medications, dosages, and frequencies from this image. Format as a list with one medication per line in the format: 'medication_name dosage frequency'. For example: 'metformin 1000mg twice daily'"
+                })
+            });
+            
+            if (!response.ok) {
+                throw new Error(`OCR processing failed: ${response.statusText}`);
+            }
+            
+            const result = await response.json();
+            
+            if (result.medications && result.medications.length > 0) {
+                // Check which page we're on and populate accordingly
+                if (this.currentPage === 'batch') {
+                    // For batch review, populate the text area
+                    this.medicationTextInput.value = result.medications.join('\n');
+                    this.validateBatchInputs();
+                } else {
+                    // For drug interactions page, populate the individual input fields
+                    this.populateDrugInputs(result.medications);
+                }
+                this.showNotification(`Extracted ${result.medications.length} medications from image`, 'success');
+            } else {
+                this.showNotification('No medications found in image. Please try a clearer photo.', 'warning');
+            }
+            
+        } catch (error) {
+            console.error('OCR processing error:', error);
+            this.showNotification('Failed to process image. Please try again or enter medications manually.', 'error');
+        }
+    }
+
+    // Populate drug input fields with extracted medications
+    populateDrugInputs(medications) {
+        const drugInputs = [this.drug1Input, this.drug2Input, this.drug3Input];
+        
+        // Clear existing inputs first
+        drugInputs.forEach(input => {
+            if (input) input.value = '';
+        });
+        
+        // Populate up to 3 drugs in the interaction checker
+        medications.slice(0, 3).forEach((medication, index) => {
+            if (drugInputs[index]) {
+                // Extract just the drug name (remove dosage info for interaction checking)
+                const drugName = this.extractDrugName(medication);
+                drugInputs[index].value = drugName;
+            }
+        });
+        
+        // Validate inputs after populating
+        this.validateInputs();
+        
+        // If more than 3 medications were found, inform the user
+        if (medications.length > 3) {
+            this.showNotification(`Found ${medications.length} medications. Only the first 3 have been loaded for interaction checking.`, 'info');
+        }
+    }
+    
+    // Extract drug name from medication string (remove dosage information)
+    extractDrugName(medicationString) {
+        // Remove common dosage patterns to get clean drug name
+        const cleaned = medicationString
+            .toLowerCase()
+            .replace(/\b\d+(\.\d+)?\s*(mg|mcg|g|ml|units?|iu|cc)\b/gi, '') // Remove dosage amounts
+            .replace(/\b(daily|twice\s+daily|three\s+times\s+daily|bid|tid|qid|qd|prn|as\s+needed)\b/gi, '') // Remove frequencies
+            .replace(/\b(once|twice|three\s+times|four\s+times)\s+(daily|a\s+day)\b/gi, '') // Remove frequency variations
+            .replace(/\b(morning|evening|night|bedtime|breakfast|lunch|dinner)\b/gi, '') // Remove timing
+            .replace(/\s+/g, ' ') // Normalize whitespace
+            .trim();
+        
+        // Return the first word (should be the drug name)
+        const words = cleaned.split(' ');
+        return words[0] || medicationString.split(' ')[0];
+    }
+
+    // Quick upload methods for drug interactions
+    handleQuickPictureUpload(file) {
+        if (!file) return;
+        
+        if (!file.type.startsWith('image/')) {
+            this.showNotification('Please select an image file', 'error');
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            // Process with OCR directly
+            this.processImageWithOCR(e.target.result);
+        };
+        
+        reader.readAsDataURL(file);
+    }
+
+    async startQuickCamera() {
+        try {
+            this.quickCameraStream = await navigator.mediaDevices.getUserMedia({ 
+                video: { 
+                    width: { ideal: 1280 },
+                    height: { ideal: 720 }
+                } 
+            });
+            
+            this.quickCameraVideo.srcObject = this.quickCameraStream;
+            
+            // Hide upload content, show camera
+            this.quickCameraArea.querySelector('.file-upload-content').style.display = 'none';
+            this.quickCameraPreview.style.display = 'block';
+            this.quickCameraVideo.style.display = 'block';
+            this.quickCaptureBtn.style.display = 'inline-block';
+            this.quickStopCameraBtn.style.display = 'inline-block';
+            
+        } catch (error) {
+            console.error('Error accessing camera:', error);
+            let message = 'Unable to access camera. ';
+            
+            if (error.name === 'NotAllowedError') {
+                message += 'Please allow camera access and try again.';
+            } else if (error.name === 'NotFoundError') {
+                message += 'No camera found on this device.';
+            } else if (error.name === 'NotSupportedError') {
+                message += 'Camera not supported on this browser.';
+            } else {
+                message += 'Please check permissions and try again.';
+            }
+            
+            this.showNotification(message, 'error');
+            
+            // Reset UI on error
+            this.quickCameraArea.querySelector('.file-upload-content').style.display = 'flex';
+            this.quickCameraPreview.style.display = 'none';
+        }
+    }
+
+    captureQuickPhoto() {
+        if (!this.quickCameraStream) return;
+        
+        // Set canvas size to video dimensions
+        this.quickCameraCanvas.width = this.quickCameraVideo.videoWidth;
+        this.quickCameraCanvas.height = this.quickCameraVideo.videoHeight;
+        
+        // Draw current video frame to canvas
+        const ctx = this.quickCameraCanvas.getContext('2d');
+        ctx.drawImage(this.quickCameraVideo, 0, 0);
+        
+        // Get image data
+        const imageDataUrl = this.quickCameraCanvas.toDataURL('image/jpeg', 0.8);
+        
+        // Show captured image
+        this.quickCapturedImage.src = imageDataUrl;
+        this.quickCameraVideo.style.display = 'none';
+        this.quickCapturedImage.style.display = 'block';
+        
+        // Update buttons
+        this.quickCaptureBtn.style.display = 'none';
+        this.quickRetakeBtn.style.display = 'inline-block';
+        
+        // Store captured data
+        this.quickCapturedImageData = imageDataUrl;
+        
+        // Process with OCR
+        this.processImageWithOCR(imageDataUrl);
+    }
+
+    retakeQuickPhoto() {
+        this.quickCapturedImage.style.display = 'none';
+        this.quickCameraVideo.style.display = 'block';
+        this.quickCaptureBtn.style.display = 'inline-block';
+        this.quickRetakeBtn.style.display = 'none';
+        this.quickCapturedImageData = null;
+    }
+
+    stopQuickCamera() {
+        if (this.quickCameraStream) {
+            this.quickCameraStream.getTracks().forEach(track => track.stop());
+            this.quickCameraStream = null;
+        }
+        
+        // Reset UI
+        this.quickCameraArea.querySelector('.file-upload-content').style.display = 'flex';
+        this.quickCameraPreview.style.display = 'none';
+        this.quickCameraVideo.style.display = 'none';
+        this.quickCapturedImage.style.display = 'none';
+        this.quickCaptureBtn.style.display = 'none';
+        this.quickRetakeBtn.style.display = 'none';
+        this.quickStopCameraBtn.style.display = 'none';
+        this.quickCapturedImageData = null;
     }
 
     setBatchResultBadge(status) {
