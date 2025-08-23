@@ -394,23 +394,76 @@ class MedGuardApp {
     async validateDosage(drugInfo, patientId) {
         const startTime = Date.now();
         
-        const response = await fetch(`${this.apiBaseUrl}/api/validate-dosage`, {
+        // Use MCP server for FDA-based dosage validation
+        const mcpUrl = 'http://localhost:3001/api/validate-dosage';
+        
+        console.log(`🔗 Calling MCP server for FDA dosage validation`);
+        
+        // Log the dosage validation request
+        this.logger.logDataFlow({
+            action: 'dosage_validation_request',
+            path: '/api/validate-dosage',
+            method: 'POST',
+            payload: {
+                drug_name: drugInfo.drug_name,
+                dosage: drugInfo.dosage,
+                patient_id: patientId
+            }
+        });
+        
+        const response = await fetch(mcpUrl, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                drug: drugInfo,
+                drug_name: drugInfo.drug_name,
+                dosage: drugInfo.dosage.split(' ')[0], // Extract dose part (e.g., "10mg" from "10mg twice daily")
+                frequency: drugInfo.dosage.split(' ').slice(1).join(' '), // Extract frequency part
                 patient_id: patientId
             })
         });
 
         if (!response.ok) {
+            // Log API failure
+            this.logger.logApiCall({
+                service: 'mcp-dosage',
+                endpoint: '/api/validate-dosage',
+                success: false,
+                error: `HTTP ${response.status}`,
+                fallback: true
+            });
             throw new Error(`HTTP error! status: ${response.status}`);
         }
 
         const result = await response.json();
         result.processing_time_ms = Date.now() - startTime;
+
+        // Log successful FDA API usage
+        this.logger.logApiCall({
+            service: 'mcp-dosage',
+            endpoint: '/api/validate-dosage',
+            success: true,
+            fallback: false
+        });
+
+        // Log FDA data sources
+        if (result.data_sources) {
+            this.logger.logApiCall({
+                service: 'fda-dosage-validation',
+                endpoint: 'FDA Drug Labeling & Safety APIs',
+                success: true,
+                fallback: false,
+                metadata: {
+                    rxnorm: result.data_sources.rxnorm,
+                    fda_labeling: result.data_sources.fda_labeling,
+                    safety_profile: result.data_sources.safety_profile,
+                    risk_level: result.dosage_validation?.risk_level
+                }
+            });
+        }
+
+        console.log('✅ Received FDA dosage validation data');
         
         return result;
     }
@@ -427,34 +480,163 @@ class MedGuardApp {
         const responseTime = card.querySelector('.response-time');
         const checkDate = card.querySelector('.check-date');
 
-        // Set badge and title based on validation status
-        const statusIcons = {
-            'APPROPRIATE': '✅',
-            'SUBOPTIMAL': '⚠️',
-            'INAPPROPRIATE': '🚨',
-            'EXCESSIVE': '🔴',
-            'CONTRAINDICATED': '⛔',
-            'UNPARSEABLE': '❓'
-        };
+        // Handle new FDA-based format from MCP server
+        if (result.dosage_validation) {
+            // New FDA format
+            const validation = result.dosage_validation;
+            
+            // Map risk levels to status icons
+            const riskIcons = {
+                'SAFE': '✅',
+                'WARNING': '⚠️',
+                'DANGER': '🚨'
+            };
+            
+            const riskClasses = {
+                'SAFE': 'safe',
+                'WARNING': 'warning',
+                'DANGER': 'danger'
+            };
+            
+            badge.textContent = riskIcons[validation.risk_level] || '?';
+            badge.className = `result-badge ${riskClasses[validation.risk_level] || 'warning'}`;
+            
+            const drugName = result.drug_info?.normalized_name || result.drug_info?.original_name || 'Drug';
+            title.textContent = `${validation.risk_level}: ${drugName} Dosage ${validation.is_valid ? 'Valid' : 'Invalid'}`;
+            
+            // Build explanation from FDA data
+            let explanationText = '';
+            if (validation.warnings && validation.warnings.length > 0) {
+                explanationText = validation.warnings[0];
+            } else if (validation.recommendations && validation.recommendations.length > 0) {
+                explanationText = validation.recommendations[0];
+            } else {
+                explanationText = validation.is_valid ? 
+                    'Dosage is within FDA-approved parameters.' : 
+                    'Dosage validation failed. Please review FDA recommendations.';
+            }
+            explanation.textContent = explanationText;
+            
+            // Display FDA dosage information
+            if (result.fda_dosage_info) {
+                dosageDetails.innerHTML = '';
+                
+                // Show FDA recommended dosages
+                if (result.fda_dosage_info.recommended_dosages && result.fda_dosage_info.recommended_dosages.length > 0) {
+                    const fdaItem = document.createElement('div');
+                    fdaItem.className = 'dosage-detail-item';
+                    fdaItem.innerHTML = `
+                        <span class="dosage-detail-label">FDA Recommended Dosages</span>
+                        <span class="dosage-detail-value">${result.fda_dosage_info.recommended_dosages.slice(0, 3).join(', ')}</span>
+                    `;
+                    dosageDetails.appendChild(fdaItem);
+                }
+                
+                // Show max daily dose if available
+                if (result.fda_dosage_info.max_daily_dose) {
+                    const maxItem = document.createElement('div');
+                    maxItem.className = 'dosage-detail-item';
+                    maxItem.innerHTML = `
+                        <span class="dosage-detail-label">FDA Maximum Daily Dose</span>
+                        <span class="dosage-detail-value">${result.fda_dosage_info.max_daily_dose}</span>
+                    `;
+                    dosageDetails.appendChild(maxItem);
+                }
+                
+                // Show special populations
+                if (result.fda_dosage_info.special_populations && result.fda_dosage_info.special_populations.length > 0) {
+                    result.fda_dosage_info.special_populations.forEach(pop => {
+                        const popItem = document.createElement('div');
+                        popItem.className = 'dosage-detail-item';
+                        popItem.innerHTML = `
+                            <span class="dosage-detail-label">${pop.population} Considerations</span>
+                            <span class="dosage-detail-value">${pop.consideration}</span>
+                        `;
+                        dosageDetails.appendChild(popItem);
+                    });
+                }
+                
+                // Show safety considerations
+                if (result.safety_considerations) {
+                    if (result.safety_considerations.has_black_box_warning) {
+                        const warningItem = document.createElement('div');
+                        warningItem.className = 'dosage-detail-item';
+                        warningItem.innerHTML = `
+                            <span class="dosage-detail-label">⚠️ FDA Black Box Warning</span>
+                            <span class="dosage-detail-value">This medication has an FDA black box warning</span>
+                        `;
+                        dosageDetails.appendChild(warningItem);
+                    }
+                    
+                    const riskItem = document.createElement('div');
+                    riskItem.className = 'dosage-detail-item';
+                    const riskPercent = (result.safety_considerations.risk_score * 100).toFixed(0);
+                    riskItem.innerHTML = `
+                        <span class="dosage-detail-label">FDA Safety Risk Score</span>
+                        <span class="dosage-detail-value">${riskPercent}%</span>
+                    `;
+                    dosageDetails.appendChild(riskItem);
+                }
+                
+                // Show data sources
+                if (result.data_sources) {
+                    const sourcesItem = document.createElement('div');
+                    sourcesItem.className = 'dosage-detail-item';
+                    const sources = [];
+                    if (result.data_sources.rxnorm) sources.push('RxNorm');
+                    if (result.data_sources.fda_labeling) sources.push('FDA Drug Labels');
+                    if (result.data_sources.safety_profile) sources.push('FDA Safety Data');
+                    sourcesItem.innerHTML = `
+                        <span class="dosage-detail-label">Data Sources</span>
+                        <span class="dosage-detail-value">${sources.join(', ')}</span>
+                    `;
+                    dosageDetails.appendChild(sourcesItem);
+                }
+            }
+            
+            // Set recommendations from FDA validation
+            if (validation.recommendations && validation.recommendations.length > 0) {
+                recommendationsSection.style.display = 'block';
+                recommendationsList.innerHTML = '';
+                
+                validation.recommendations.forEach(rec => {
+                    const li = document.createElement('li');
+                    li.textContent = rec;
+                    recommendationsList.appendChild(li);
+                });
+            } else {
+                recommendationsSection.style.display = 'none';
+            }
+            
+        } else {
+            // Legacy format (fallback)
+            const statusIcons = {
+                'APPROPRIATE': '✅',
+                'SUBOPTIMAL': '⚠️',
+                'INAPPROPRIATE': '🚨',
+                'EXCESSIVE': '🔴',
+                'CONTRAINDICATED': '⛔',
+                'UNPARSEABLE': '❓'
+            };
 
-        const statusClasses = {
-            'APPROPRIATE': 'safe',
-            'SUBOPTIMAL': 'warning',
-            'INAPPROPRIATE': 'danger',
-            'EXCESSIVE': 'danger',
-            'CONTRAINDICATED': 'danger',
-            'UNPARSEABLE': 'warning'
-        };
+            const statusClasses = {
+                'APPROPRIATE': 'safe',
+                'SUBOPTIMAL': 'warning',
+                'INAPPROPRIATE': 'danger',
+                'EXCESSIVE': 'danger',
+                'CONTRAINDICATED': 'danger',
+                'UNPARSEABLE': 'warning'
+            };
 
-        badge.textContent = statusIcons[result.validation_status] || '?';
-        badge.className = `result-badge ${statusClasses[result.validation_status] || 'warning'}`;
-        title.textContent = `${result.validation_status}: ${result.proposed_dose?.original_string || 'Dosage'}`;
+            badge.textContent = statusIcons[result.validation_status] || '?';
+            badge.className = `result-badge ${statusClasses[result.validation_status] || 'warning'}`;
+            title.textContent = `${result.validation_status}: ${result.proposed_dose?.original_string || 'Dosage'}`;
 
-        explanation.textContent = result.explanation;
+            explanation.textContent = result.explanation;
 
-        // Set dosage details
-        if (result.recommended_dose_range || result.patient_adjustments) {
-            dosageDetails.innerHTML = '';
+            // Set dosage details
+            if (result.recommended_dose_range || result.patient_adjustments) {
+                dosageDetails.innerHTML = '';
             
             if (result.proposed_dose) {
                 const proposedItem = document.createElement('div');
@@ -496,22 +678,23 @@ class MedGuardApp {
                 });
             }
         }
+        
+            // Set recommendations (for legacy format)
+            if (result.recommendations && result.recommendations.length > 0) {
+                recommendationsSection.style.display = 'block';
+                recommendationsList.innerHTML = '';
+                
+                result.recommendations.forEach(rec => {
+                    const li = document.createElement('li');
+                    li.textContent = rec;
+                    recommendationsList.appendChild(li);
+                });
+            } else {
+                recommendationsSection.style.display = 'none';
+            }
+        } // End of legacy format else block
 
-        // Set recommendations
-        if (result.recommendations && result.recommendations.length > 0) {
-            recommendationsSection.style.display = 'block';
-            recommendationsList.innerHTML = '';
-            
-            result.recommendations.forEach(rec => {
-                const li = document.createElement('li');
-                li.textContent = rec;
-                recommendationsList.appendChild(li);
-            });
-        } else {
-            recommendationsSection.style.display = 'none';
-        }
-
-        // Set metadata
+        // Set metadata (common for both formats)
         responseTime.textContent = `${result.processing_time_ms || 0}ms`;
         checkDate.textContent = new Date().toLocaleString();
 
@@ -1388,12 +1571,12 @@ class MedGuardApp {
         });
 
         try {
-            // Try to call real API first
+            // Try to call real API first (MCP server -> FDA/RxNorm)
             const apiResponse = await this.callRealInteractionAPI(drugs, patientId);
             
-            // Log successful API call
+            // Log successful API call to MCP server (which uses real FDA/RxNorm APIs)
             this.logger.logApiCall({
-                service: 'medguard-api',
+                service: 'mcp-server',
                 endpoint: '/api/check-interaction',
                 method: 'POST',
                 requestData: { drugs, patientId },
@@ -1401,6 +1584,21 @@ class MedGuardApp {
                 success: true,
                 fallback: false
             });
+
+            // Log that we're using real FDA data
+            if (apiResponse.data_sources) {
+                this.logger.logApiCall({
+                    service: 'fda-rxnorm',
+                    endpoint: 'Multiple FDA/RxNorm endpoints via MCP',
+                    success: true,
+                    fallback: false,
+                    metadata: {
+                        sources: apiResponse.data_sources,
+                        severity: apiResponse.interaction_analysis?.severity,
+                        from_cache: apiResponse.from_cache || false
+                    }
+                });
+            }
 
             return apiResponse;
         } catch (error) {
@@ -1435,7 +1633,12 @@ class MedGuardApp {
     }
 
     async callRealInteractionAPI(drugs, patientId = null) {
-        const response = await fetch(`${this.apiBaseUrl}/api/check-interaction`, {
+        // Call the MCP server which handles all FDA and RxNorm API calls
+        const mcpUrl = 'http://localhost:3001/api/check-interaction';
+        
+        console.log(`🔗 Calling MCP server at ${mcpUrl} for FDA/RxNorm data`);
+        
+        const response = await fetch(mcpUrl, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -1447,10 +1650,13 @@ class MedGuardApp {
         });
 
         if (!response.ok) {
-            throw new Error(`API request failed: ${response.status} ${response.statusText}`);
+            throw new Error(`MCP API request failed: ${response.status} ${response.statusText}`);
         }
 
-        return await response.json();
+        const result = await response.json();
+        console.log('✅ Received FDA/RxNorm data from MCP server');
+        
+        return result;
     }
 
     async simulatePrimaryAgent(drugs, patientId) {
@@ -1638,7 +1844,60 @@ class MedGuardApp {
         const responseTime = card.querySelector('.response-time');
         const checkDate = card.querySelector('.check-date');
 
-        // Set badge and title based on risk level
+        // New FDA-related sections
+        const fdaWarningsSection = card.querySelector('.fda-warnings-section');
+        const fdaWarningsList = card.querySelector('.fda-warnings-list');
+        const fdaContraindicationsSection = card.querySelector('.fda-contraindications-section');
+        const fdaContraindicationsList = card.querySelector('.fda-contraindications-list');
+        const safetyProfilesSection = card.querySelector('.safety-profiles-section');
+        const safetyProfilesDetails = card.querySelector('.safety-profiles-details');
+        const monitoringSection = card.querySelector('.monitoring-section');
+        const monitoringDetails = card.querySelector('.monitoring-details');
+
+        // Handle both old and new result formats
+        const isNewFDAFormat = result.interaction_analysis || result.drug1 || result.drug2;
+        
+        if (isNewFDAFormat) {
+            // New FDA-enhanced format
+            this.displayFDAResult(result, {
+                badge, title, explanation, recommendationsSection, recommendationsList,
+                patientSection, patientDetails, responseTime, checkDate,
+                fdaWarningsSection, fdaWarningsList, fdaContraindicationsSection, fdaContraindicationsList,
+                safetyProfilesSection, safetyProfilesDetails, monitoringSection, monitoringDetails
+            });
+        } else {
+            // Legacy format
+            this.displayLegacyResult(result, {
+                badge, title, explanation, recommendationsSection, recommendationsList,
+                patientSection, patientDetails, responseTime, checkDate
+            });
+            
+            // Hide FDA sections for legacy results
+            if (fdaWarningsSection) fdaWarningsSection.style.display = 'none';
+            if (fdaContraindicationsSection) fdaContraindicationsSection.style.display = 'none';
+            if (safetyProfilesSection) safetyProfilesSection.style.display = 'none';
+            if (monitoringSection) monitoringSection.style.display = 'none';
+        }
+
+        // Show result container with animation
+        container.style.display = 'block';
+        container.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    displayFDAResult(result, elements) {
+        const analysis = result.interaction_analysis;
+        const severity = analysis?.severity || 'UNKNOWN';
+        
+        // Map severity to risk levels
+        const severityToRisk = {
+            'MAJOR': 'DANGER',
+            'MODERATE': 'WARNING',
+            'MINOR': 'WARNING',
+            'UNKNOWN': 'SAFE'
+        };
+        
+        const riskLevel = severityToRisk[severity];
+        
         const riskIcons = {
             'SAFE': '✅',
             'WARNING': '⚠️',
@@ -1651,52 +1910,246 @@ class MedGuardApp {
             'DANGER': 'danger'
         };
 
-        badge.textContent = riskIcons[result.risk_level] || '?';
-        badge.className = `result-badge ${riskClasses[result.risk_level] || ''}`;
-        title.textContent = `${result.risk_level}: ${(result.drugs_checked || []).join(' + ')}`;
+        // Set badge and title
+        elements.badge.textContent = riskIcons[riskLevel] || '?';
+        elements.badge.className = `result-badge ${riskClasses[riskLevel] || ''}`;
+        
+        const drugNames = [result.drug1?.name, result.drug2?.name].filter(Boolean).join(' + ');
+        elements.title.textContent = `${severity}: ${drugNames}`;
 
-        // Set explanation
-        explanation.textContent = result.explanation;
+        // Set explanation with clinical recommendation
+        elements.explanation.textContent = analysis?.clinical_recommendation || 'Interaction analysis completed.';
 
         // Set recommendations
-        if (result.recommendations && result.recommendations.length > 0) {
-            recommendationsSection.style.display = 'block';
-            recommendationsList.innerHTML = '';
-            
-            result.recommendations.forEach(rec => {
-                const li = document.createElement('li');
-                li.textContent = rec;
-                recommendationsList.appendChild(li);
-            });
-        } else {
-            recommendationsSection.style.display = 'none';
+        const recommendations = [];
+        if (analysis?.monitoring_parameters?.parameters) {
+            recommendations.push(`Monitor: ${analysis.monitoring_parameters.parameters.join(', ')}`);
+        }
+        if (analysis?.monitoring_parameters?.frequency) {
+            recommendations.push(`Monitoring frequency: ${analysis.monitoring_parameters.frequency}`);
+        }
+        if (analysis?.clinical_recommendation) {
+            recommendations.push(analysis.clinical_recommendation);
         }
 
-        // Set patient context
+        if (recommendations.length > 0) {
+            elements.recommendationsSection.style.display = 'block';
+            elements.recommendationsList.innerHTML = '';
+            
+            recommendations.forEach(rec => {
+                const li = document.createElement('li');
+                li.textContent = rec;
+                elements.recommendationsList.appendChild(li);
+            });
+        } else {
+            elements.recommendationsSection.style.display = 'none';
+        }
+
+        // Display FDA warnings
+        if (analysis?.fda_warnings && analysis.fda_warnings.length > 0) {
+            elements.fdaWarningsSection.style.display = 'block';
+            elements.fdaWarningsList.innerHTML = '';
+            
+            analysis.fda_warnings.forEach(warning => {
+                const warningItem = document.createElement('div');
+                warningItem.className = 'warning-item';
+                warningItem.textContent = warning;
+                elements.fdaWarningsList.appendChild(warningItem);
+            });
+        } else {
+            elements.fdaWarningsSection.style.display = 'none';
+        }
+
+        // Display FDA contraindications
+        if (analysis?.contraindications && analysis.contraindications.length > 0) {
+            elements.fdaContraindicationsSection.style.display = 'block';
+            elements.fdaContraindicationsList.innerHTML = '';
+            
+            analysis.contraindications.forEach(contraindication => {
+                const contraItem = document.createElement('div');
+                contraItem.className = 'contraindication-item';
+                contraItem.textContent = contraindication;
+                elements.fdaContraindicationsList.appendChild(contraItem);
+            });
+        } else {
+            elements.fdaContraindicationsSection.style.display = 'none';
+        }
+
+        // Display safety profiles
+        if (result.drug1?.safety_profile || result.drug2?.safety_profile) {
+            elements.safetyProfilesSection.style.display = 'block';
+            elements.safetyProfilesDetails.innerHTML = '';
+            
+            [result.drug1, result.drug2].forEach(drug => {
+                if (drug?.safety_profile || drug?.risk_score !== undefined) {
+                    const drugProfile = document.createElement('div');
+                    drugProfile.className = 'safety-profile-drug';
+                    
+                    const riskLevel = drug.risk_score > 0.7 ? 'high' : drug.risk_score > 0.4 ? 'medium' : 'low';
+                    const riskText = drug.risk_score > 0.7 ? 'High Risk' : drug.risk_score > 0.4 ? 'Medium Risk' : 'Low Risk';
+                    
+                    drugProfile.innerHTML = `
+                        <h4>${drug.name} <span class="risk-score ${riskLevel}">${riskText}</span></h4>
+                        <div class="safety-metrics">
+                            ${drug.safety_profile ? `
+                                <div class="safety-metric">
+                                    <div class="metric-value">${drug.safety_profile.total_adverse_events || 'N/A'}</div>
+                                    <div class="metric-label">Total Events</div>
+                                </div>
+                                <div class="safety-metric">
+                                    <div class="metric-value">${((drug.safety_profile.serious_events_ratio || 0) * 100).toFixed(1)}%</div>
+                                    <div class="metric-label">Serious Events</div>
+                                </div>
+                                <div class="safety-metric">
+                                    <div class="metric-value">${drug.safety_profile.recent_recalls || 0}</div>
+                                    <div class="metric-label">Recent Recalls</div>
+                                </div>
+                            ` : `
+                                <div class="safety-metric">
+                                    <div class="metric-value">${(drug.risk_score * 100).toFixed(0)}%</div>
+                                    <div class="metric-label">Risk Score</div>
+                                </div>
+                            `}
+                        </div>
+                    `;
+                    
+                    elements.safetyProfilesDetails.appendChild(drugProfile);
+                }
+            });
+        } else {
+            elements.safetyProfilesSection.style.display = 'none';
+        }
+
+        // Display monitoring recommendations
+        if (analysis?.monitoring_parameters) {
+            elements.monitoringSection.style.display = 'block';
+            const monitoring = analysis.monitoring_parameters;
+            
+            elements.monitoringDetails.innerHTML = `
+                <div class="monitoring-parameters">
+                    <div class="monitoring-parameter">
+                        <h4>Parameters to Monitor</h4>
+                        <ul class="monitoring-list">
+                            ${monitoring.parameters?.map(param => `<li>${param}</li>`).join('') || '<li>Standard monitoring</li>'}
+                        </ul>
+                    </div>
+                    <div class="monitoring-parameter">
+                        <h4>Frequency</h4>
+                        <p>${monitoring.frequency || 'As clinically indicated'}</p>
+                    </div>
+                    <div class="monitoring-parameter">
+                        <h4>Duration</h4>
+                        <p>${monitoring.duration || 'Ongoing during concurrent therapy'}</p>
+                    </div>
+                </div>
+            `;
+        } else {
+            elements.monitoringSection.style.display = 'none';
+        }
+
+        // Display data sources
+        if (result.data_sources) {
+            const sourceIndicator = document.createElement('div');
+            sourceIndicator.className = 'data-source-indicator';
+            sourceIndicator.innerHTML = `
+                <strong>Data Sources:</strong>
+                ${result.data_sources.fda_adverse_events ? '<span class="source-badge">FDA Adverse Events</span>' : ''}
+                ${result.data_sources.fda_drug_labeling ? '<span class="source-badge">FDA Drug Labeling</span>' : ''}
+                ${result.data_sources.safety_profiles ? '<span class="source-badge">Safety Profiles</span>' : ''}
+            `;
+            
+            // Add to metadata section
+            const metadataSection = elements.responseTime.closest('.metadata-section');
+            if (metadataSection && !metadataSection.querySelector('.data-source-indicator')) {
+                metadataSection.appendChild(sourceIndicator);
+            }
+        }
+
+        // Handle patient context if present
         if (result.patient_context) {
-            patientSection.style.display = 'block';
+            elements.patientSection.style.display = 'block';
             const patient = result.patient_context;
             
-            patientDetails.innerHTML = `
+            elements.patientDetails.innerHTML = `
                 <div><strong>${patient.name || 'Unknown Patient'}</strong> (${patient.age || 'N/A'}${patient.gender || ''}, ${(patient.conditions || []).map(c => (typeof c === 'object' ? c.condition : c)).join(', ')})</div>
                 <div><strong>Current Medications:</strong> ${(patient.current_medications || []).join(', ')}</div>
                 ${(patient.allergies || []).length > 0 ? `<div><strong>Allergies:</strong> ${patient.allergies.join(', ')}</div>` : ''}
                 ${Object.keys(patient.lab_values || {}).length > 0 ? `<div><strong>Recent Labs:</strong> ${Object.entries(patient.lab_values).map(([key, val]) => `${key}: ${val?.value || val}`).join(', ')}</div>` : ''}
             `;
         } else {
-            patientSection.style.display = 'none';
+            elements.patientSection.style.display = 'none';
         }
 
         // Set metadata
-        responseTime.textContent = `${result.processing_time_ms || 0}ms`;
-        checkDate.textContent = new Date().toLocaleString();
+        elements.responseTime.textContent = `${result.processing_time_ms || 0}ms`;
+        elements.checkDate.textContent = new Date().toLocaleString();
 
-        // Show result container with animation
-        container.style.display = 'block';
-        container.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        // Add pulse animation for dangerous interactions
+        if (riskLevel === 'DANGER') {
+            const card = elements.badge.closest('.result-card');
+            card.style.animation = 'pulse 2s infinite';
+            setTimeout(() => {
+                card.style.animation = '';
+            }, 6000);
+        }
+    }
+
+    displayLegacyResult(result, elements) {
+        const riskIcons = {
+            'SAFE': '✅',
+            'WARNING': '⚠️',
+            'DANGER': '🚨'
+        };
+
+        const riskClasses = {
+            'SAFE': 'safe',
+            'WARNING': 'warning',
+            'DANGER': 'danger'
+        };
+
+        elements.badge.textContent = riskIcons[result.risk_level] || '?';
+        elements.badge.className = `result-badge ${riskClasses[result.risk_level] || ''}`;
+        elements.title.textContent = `${result.risk_level}: ${(result.drugs_checked || []).join(' + ')}`;
+
+        // Set explanation
+        elements.explanation.textContent = result.explanation;
+
+        // Set recommendations
+        if (result.recommendations && result.recommendations.length > 0) {
+            elements.recommendationsSection.style.display = 'block';
+            elements.recommendationsList.innerHTML = '';
+            
+            result.recommendations.forEach(rec => {
+                const li = document.createElement('li');
+                li.textContent = rec;
+                elements.recommendationsList.appendChild(li);
+            });
+        } else {
+            elements.recommendationsSection.style.display = 'none';
+        }
+
+        // Set patient context
+        if (result.patient_context) {
+            elements.patientSection.style.display = 'block';
+            const patient = result.patient_context;
+            
+            elements.patientDetails.innerHTML = `
+                <div><strong>${patient.name || 'Unknown Patient'}</strong> (${patient.age || 'N/A'}${patient.gender || ''}, ${(patient.conditions || []).map(c => (typeof c === 'object' ? c.condition : c)).join(', ')})</div>
+                <div><strong>Current Medications:</strong> ${(patient.current_medications || []).join(', ')}</div>
+                ${(patient.allergies || []).length > 0 ? `<div><strong>Allergies:</strong> ${patient.allergies.join(', ')}</div>` : ''}
+                ${Object.keys(patient.lab_values || {}).length > 0 ? `<div><strong>Recent Labs:</strong> ${Object.entries(patient.lab_values).map(([key, val]) => `${key}: ${val?.value || val}`).join(', ')}</div>` : ''}
+            `;
+        } else {
+            elements.patientSection.style.display = 'none';
+        }
+
+        // Set metadata
+        elements.responseTime.textContent = `${result.processing_time_ms || 0}ms`;
+        elements.checkDate.textContent = new Date().toLocaleString();
 
         // Add pulse animation for dangerous interactions
         if (result.risk_level === 'DANGER') {
+            const card = elements.badge.closest('.result-card');
             card.style.animation = 'pulse 2s infinite';
             setTimeout(() => {
                 card.style.animation = '';

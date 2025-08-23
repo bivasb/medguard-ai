@@ -22,6 +22,8 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import express from 'express';
 import cors from 'cors';
 import fetch from 'node-fetch';
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
 const RxNormService = require('../../backend/services/rxnorm-service.js');
 const OpenFDAService = require('../../backend/services/openfda-service.js');
 
@@ -385,7 +387,7 @@ class MedGuardMCPServer {
   }
 
   /**
-   * Check drug interaction using FDA OpenFDA
+   * Check drug interaction using FDA OpenFDA service
    */
   async checkInteraction({ drug1, drug2 }) {
     // Create cache key
@@ -411,28 +413,34 @@ class MedGuardMCPServer {
     await this.checkRateLimit('fda');
 
     try {
-      // Query FDA adverse events
-      const drug1Name = encodeURIComponent(drug1.name);
-      const drug2Name = encodeURIComponent(drug2.name);
+      // Use the integrated OpenFDA service instead of direct API calls
+      const safetyProfile1 = await this.openFDAService.getDrugSafetyProfile(drug1.name);
+      const safetyProfile2 = await this.openFDAService.getDrugSafetyProfile(drug2.name);
       
-      const url = `https://api.fda.gov/drug/event.json?search=patient.drug.medicinalproduct:"${drug1Name}"+AND+patient.drug.medicinalproduct:"${drug2Name}"&limit=100`;
+      // Check for specific drug-drug interactions
+      const adverseEventsResult = await this.openFDAService.searchAdverseEvents({
+        drug1: drug1.name,
+        drug2: drug2.name,
+        limit: 100
+      });
+
+      // Get drug labeling information for warnings
+      const drug1Labeling = await this.openFDAService.searchDrugLabeling(drug1.name);
+      const drug2Labeling = await this.openFDAService.searchDrugLabeling(drug2.name);
+
+      // Combine results for comprehensive analysis
+      let adverseEvents = { total: 0, serious: 0, reactions: [], warnings: [], contraindications: [] };
       
-      const response = await fetch(url);
-      
-      let adverseEvents = { total: 0, serious: 0, reactions: [] };
-      
-      if (response.ok) {
-        const data = await response.json();
-        
-        const seriousEvents = data.results?.filter(event =>
+      if (adverseEventsResult.success && adverseEventsResult.data.results) {
+        const seriousEvents = adverseEventsResult.data.results.filter(event =>
           event.serious === '1' ||
           event.seriousnessdeath === '1' ||
           event.seriousnesshospitalization === '1'
-        ) || [];
+        );
         
         // Extract common reactions
         const reactionCounts = {};
-        data.results?.forEach(event => {
+        adverseEventsResult.data.results.forEach(event => {
           event.patient?.reaction?.forEach(reaction => {
             const term = reaction.reactionmeddrapt;
             if (term) {
@@ -447,36 +455,70 @@ class MedGuardMCPServer {
           .map(([reaction, count]) => ({ reaction, count }));
         
         adverseEvents = {
-          total: data.meta?.results?.total || 0,
+          total: adverseEventsResult.data.meta?.results?.total || 0,
           serious: seriousEvents.length,
-          reactions: topReactions
+          reactions: topReactions,
+          warnings: this.extractWarnings(drug1Labeling, drug2Labeling),
+          contraindications: this.extractContraindications(drug1Labeling, drug2Labeling)
         };
       }
 
-      // Determine severity
+      // Enhanced severity determination using safety profiles
       let severity = 'UNKNOWN';
       let confidence = 0.5;
+      let clinicalRecommendation = '';
       
-      if (adverseEvents.serious > 10) {
+      // Factor in individual drug safety profiles
+      const drug1Risk = this.assessDrugRisk(safetyProfile1);
+      const drug2Risk = this.assessDrugRisk(safetyProfile2);
+      const combinedRisk = Math.max(drug1Risk, drug2Risk);
+      
+      if (adverseEvents.serious > 10 || combinedRisk > 0.8) {
         severity = 'MAJOR';
         confidence = 0.9;
-      } else if (adverseEvents.serious > 5) {
+        clinicalRecommendation = 'Avoid combination. Consider alternative medications.';
+      } else if (adverseEvents.serious > 5 || combinedRisk > 0.6) {
         severity = 'MODERATE';
         confidence = 0.8;
-      } else if (adverseEvents.total > 10) {
+        clinicalRecommendation = 'Use with extreme caution. Monitor closely for adverse effects.';
+      } else if (adverseEvents.total > 10 || combinedRisk > 0.4) {
         severity = 'MINOR';
         confidence = 0.7;
+        clinicalRecommendation = 'Monitor for potential adverse effects. Consider dose adjustments.';
+      } else {
+        clinicalRecommendation = 'Limited interaction data available. Exercise clinical judgment.';
       }
 
       const result = {
         success: true,
-        drug1: drug1.name,
-        drug2: drug2.name,
-        interaction_found: adverseEvents.total > 0,
-        severity,
-        confidence,
-        adverse_events: adverseEvents,
-        clinical_significance: this.getClinicalSignificance(severity),
+        drug1: {
+          name: drug1.name,
+          rxcui: drug1.rxcui,
+          safety_profile: safetyProfile1.success ? safetyProfile1.profile : null,
+          risk_score: drug1Risk
+        },
+        drug2: {
+          name: drug2.name,
+          rxcui: drug2.rxcui,
+          safety_profile: safetyProfile2.success ? safetyProfile2.profile : null,
+          risk_score: drug2Risk
+        },
+        interaction_analysis: {
+          found: adverseEvents.total > 0,
+          severity,
+          confidence,
+          combined_risk_score: combinedRisk,
+          adverse_events: adverseEvents,
+          clinical_recommendation: clinicalRecommendation,
+          clinical_significance: this.getClinicalSignificance(severity),
+          fda_warnings: adverseEvents.warnings,
+          contraindications: adverseEvents.contraindications
+        },
+        data_sources: {
+          fda_adverse_events: adverseEventsResult.success,
+          fda_drug_labeling: drug1Labeling.success || drug2Labeling.success,
+          safety_profiles: safetyProfile1.success || safetyProfile2.success
+        },
         timestamp: new Date().toISOString()
       };
 
@@ -500,7 +542,8 @@ class MedGuardMCPServer {
               success: false,
               error: error.message,
               drug1: drug1.name,
-              drug2: drug2.name
+              drug2: drug2.name,
+              fallback_to_mock: true
             })
           }
         ],
@@ -619,6 +662,87 @@ class MedGuardMCPServer {
       default:
         return 'Limited data available. Exercise clinical judgment.';
     }
+  }
+
+  /**
+   * Extract warnings from drug labeling data
+   */
+  extractWarnings(drug1Labeling, drug2Labeling) {
+    const warnings = [];
+    
+    if (drug1Labeling.success && drug1Labeling.data?.results) {
+      drug1Labeling.data.results.forEach(result => {
+        if (result.warnings && Array.isArray(result.warnings)) {
+          warnings.push(...result.warnings.slice(0, 3)); // Limit to top 3 warnings
+        }
+      });
+    }
+    
+    if (drug2Labeling.success && drug2Labeling.data?.results) {
+      drug2Labeling.data.results.forEach(result => {
+        if (result.warnings && Array.isArray(result.warnings)) {
+          warnings.push(...result.warnings.slice(0, 3)); // Limit to top 3 warnings
+        }
+      });
+    }
+    
+    return [...new Set(warnings)]; // Remove duplicates
+  }
+
+  /**
+   * Extract contraindications from drug labeling data
+   */
+  extractContraindications(drug1Labeling, drug2Labeling) {
+    const contraindications = [];
+    
+    if (drug1Labeling.success && drug1Labeling.data?.results) {
+      drug1Labeling.data.results.forEach(result => {
+        if (result.contraindications && Array.isArray(result.contraindications)) {
+          contraindications.push(...result.contraindications.slice(0, 2)); // Limit to top 2
+        }
+      });
+    }
+    
+    if (drug2Labeling.success && drug2Labeling.data?.results) {
+      drug2Labeling.data.results.forEach(result => {
+        if (result.contraindications && Array.isArray(result.contraindications)) {
+          contraindications.push(...result.contraindications.slice(0, 2)); // Limit to top 2
+        }
+      });
+    }
+    
+    return [...new Set(contraindications)]; // Remove duplicates
+  }
+
+  /**
+   * Assess individual drug risk based on safety profile
+   */
+  assessDrugRisk(safetyProfile) {
+    if (!safetyProfile.success || !safetyProfile.profile) {
+      return 0.3; // Default moderate risk for unknown drugs
+    }
+    
+    const profile = safetyProfile.profile;
+    let riskScore = 0.1; // Base risk
+    
+    // Factor in adverse event frequency
+    if (profile.total_adverse_events > 1000) riskScore += 0.3;
+    else if (profile.total_adverse_events > 500) riskScore += 0.2;
+    else if (profile.total_adverse_events > 100) riskScore += 0.1;
+    
+    // Factor in serious events ratio
+    if (profile.serious_events_ratio > 0.3) riskScore += 0.4;
+    else if (profile.serious_events_ratio > 0.2) riskScore += 0.3;
+    else if (profile.serious_events_ratio > 0.1) riskScore += 0.2;
+    
+    // Factor in black box warnings
+    if (profile.has_black_box_warning) riskScore += 0.3;
+    
+    // Factor in recalls
+    if (profile.recent_recalls > 2) riskScore += 0.2;
+    else if (profile.recent_recalls > 0) riskScore += 0.1;
+    
+    return Math.min(riskScore, 1.0); // Cap at 1.0
   }
 
   /**

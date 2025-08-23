@@ -147,6 +147,360 @@ app.post('/api/drugs/initialize', async (req, res) => {
 });
 
 /**
+ * FDA Safety Profile Endpoint
+ * Get comprehensive safety profile for a drug using OpenFDA
+ */
+app.post('/api/drugs/safety-profile', async (req, res) => {
+    try {
+        const { drugName } = req.body;
+
+        if (!drugName) {
+            return res.status(400).json({ error: 'Drug name is required' });
+        }
+
+        console.log(`Getting FDA safety profile for: ${drugName}`);
+
+        // Get comprehensive safety profile from OpenFDA
+        const safetyProfile = await openFDAService.getDrugSafetyProfile(drugName);
+        
+        res.json({
+            success: true,
+            drug_name: drugName,
+            safety_profile: safetyProfile,
+            timestamp: new Date().toISOString()
+        });
+
+    } catch (error) {
+        console.error('FDA safety profile error:', error);
+        res.status(500).json({ 
+            error: 'Failed to get FDA safety profile',
+            message: error.message 
+        });
+    }
+});
+
+/**
+ * FDA Drug Interaction Analysis Endpoint
+ * Analyze potential interactions between two drugs using FDA data
+ */
+app.post('/api/drugs/interaction-analysis', async (req, res) => {
+    try {
+        const { drug1, drug2 } = req.body;
+
+        if (!drug1 || !drug2) {
+            return res.status(400).json({ error: 'Both drug names are required' });
+        }
+
+        console.log(`Analyzing FDA interaction between: ${drug1} and ${drug2}`);
+
+        // Get safety profiles for both drugs
+        const [profile1, profile2] = await Promise.all([
+            openFDAService.getDrugSafetyProfile(drug1),
+            openFDAService.getDrugSafetyProfile(drug2)
+        ]);
+
+        // Search for adverse events involving both drugs
+        const adverseEventsResult = await openFDAService.searchAdverseEvents({
+            drug1,
+            drug2,
+            limit: 100
+        });
+
+        // Get drug labeling for warnings
+        const [labeling1, labeling2] = await Promise.all([
+            openFDAService.searchDrugLabeling(drug1),
+            openFDAService.searchDrugLabeling(drug2)
+        ]);
+
+        // Analyze and calculate risk scores
+        const analysis = await analyzeDrugInteraction({
+            drug1: { name: drug1, profile: profile1, labeling: labeling1 },
+            drug2: { name: drug2, profile: profile2, labeling: labeling2 },
+            adverseEvents: adverseEventsResult
+        });
+        
+        res.json({
+            success: true,
+            drugs: { drug1, drug2 },
+            interaction_analysis: analysis,
+            timestamp: new Date().toISOString()
+        });
+
+    } catch (error) {
+        console.error('FDA interaction analysis error:', error);
+        res.status(500).json({ 
+            error: 'Failed to analyze drug interaction',
+            message: error.message 
+        });
+    }
+});
+
+/**
+ * Enhanced Drug Validation with FDA Safety Data
+ * Validates drug names and includes safety information
+ */
+app.post('/api/drugs/validate-with-safety', async (req, res) => {
+    try {
+        const { drugNames } = req.body;
+
+        if (!drugNames || !Array.isArray(drugNames)) {
+            return res.status(400).json({ error: 'Array of drug names is required' });
+        }
+
+        console.log(`Validating drugs with FDA safety data: ${drugNames.join(', ')}`);
+
+        const results = await Promise.all(drugNames.map(async (drugName) => {
+            try {
+                // Normalize drug name using RxNorm
+                const normalization = await rxNormService.normalizeDrugName(drugName);
+                
+                // Get FDA safety profile
+                const safetyProfile = await openFDAService.getDrugSafetyProfile(drugName);
+                
+                return {
+                    original_name: drugName,
+                    normalized: normalization.success ? {
+                        rxcui: normalization.rxcui,
+                        name: normalization.normalizedName,
+                        confidence: normalization.confidence
+                    } : null,
+                    safety_profile: safetyProfile.success ? safetyProfile.profile : null,
+                    validation_success: normalization.success,
+                    safety_data_available: safetyProfile.success
+                };
+            } catch (error) {
+                return {
+                    original_name: drugName,
+                    error: error.message,
+                    validation_success: false,
+                    safety_data_available: false
+                };
+            }
+        }));
+        
+        res.json({
+            success: true,
+            results,
+            validated_count: results.filter(r => r.validation_success).length,
+            safety_data_count: results.filter(r => r.safety_data_available).length,
+            timestamp: new Date().toISOString()
+        });
+
+    } catch (error) {
+        console.error('Enhanced drug validation error:', error);
+        res.status(500).json({ 
+            error: 'Failed to validate drugs with safety data',
+            message: error.message 
+        });
+    }
+});
+
+/**
+ * Analyze drug interaction using FDA data
+ */
+async function analyzeDrugInteraction(data) {
+    const { drug1, drug2, adverseEvents } = data;
+    
+    try {
+        // Calculate individual risk scores
+        const risk1 = calculateDrugRisk(drug1.profile);
+        const risk2 = calculateDrugRisk(drug2.profile);
+        
+        // Analyze adverse events
+        let adverseEventAnalysis = {
+            total: 0,
+            serious: 0,
+            reactions: [],
+            risk_level: 'UNKNOWN'
+        };
+        
+        if (adverseEvents.success && adverseEvents.data?.results) {
+            const results = adverseEvents.data.results;
+            const seriousEvents = results.filter(event =>
+                event.serious === '1' ||
+                event.seriousnessdeath === '1' ||
+                event.seriousnesshospitalization === '1'
+            );
+            
+            // Extract common reactions
+            const reactionCounts = {};
+            results.forEach(event => {
+                event.patient?.reaction?.forEach(reaction => {
+                    const term = reaction.reactionmeddrapt;
+                    if (term) {
+                        reactionCounts[term] = (reactionCounts[term] || 0) + 1;
+                    }
+                });
+            });
+            
+            const topReactions = Object.entries(reactionCounts)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 5)
+                .map(([reaction, count]) => ({ reaction, count, percentage: (count / results.length * 100).toFixed(1) }));
+            
+            adverseEventAnalysis = {
+                total: results.length,
+                serious: seriousEvents.length,
+                reactions: topReactions,
+                serious_percentage: ((seriousEvents.length / results.length) * 100).toFixed(1)
+            };
+        }
+        
+        // Determine overall severity and risk
+        const combinedRisk = Math.max(risk1, risk2);
+        let severity = 'UNKNOWN';
+        let clinicalRecommendation = '';
+        let confidence = 0.5;
+        
+        if (adverseEventAnalysis.serious > 10 || combinedRisk > 0.8) {
+            severity = 'MAJOR';
+            confidence = 0.9;
+            clinicalRecommendation = 'Avoid combination. Consider alternative medications. Consult specialist if combination necessary.';
+        } else if (adverseEventAnalysis.serious > 5 || combinedRisk > 0.6) {
+            severity = 'MODERATE';
+            confidence = 0.8;
+            clinicalRecommendation = 'Use with extreme caution. Monitor closely for adverse effects. Consider dose adjustments.';
+        } else if (adverseEventAnalysis.total > 10 || combinedRisk > 0.4) {
+            severity = 'MINOR';
+            confidence = 0.7;
+            clinicalRecommendation = 'Monitor for potential adverse effects. Patient counseling recommended.';
+        } else {
+            clinicalRecommendation = 'Limited interaction data available. Exercise clinical judgment and monitor patient closely.';
+        }
+        
+        // Extract warnings and contraindications from labeling
+        const warnings = extractLabelingWarnings(drug1.labeling, drug2.labeling);
+        const contraindications = extractLabelingContraindications(drug1.labeling, drug2.labeling);
+        
+        return {
+            severity,
+            confidence,
+            combined_risk_score: combinedRisk,
+            individual_risks: {
+                [drug1.name]: risk1,
+                [drug2.name]: risk2
+            },
+            adverse_events: adverseEventAnalysis,
+            clinical_recommendation: clinicalRecommendation,
+            fda_warnings: warnings,
+            contraindications: contraindications,
+            monitoring_parameters: generateMonitoringParameters(severity, adverseEventAnalysis.reactions)
+        };
+        
+    } catch (error) {
+        console.error('Error analyzing drug interaction:', error);
+        return {
+            severity: 'UNKNOWN',
+            confidence: 0.3,
+            error: error.message,
+            clinical_recommendation: 'Unable to analyze interaction. Consult pharmacist or prescribing physician.'
+        };
+    }
+}
+
+/**
+ * Calculate individual drug risk score
+ */
+function calculateDrugRisk(safetyProfile) {
+    if (!safetyProfile.success || !safetyProfile.profile) {
+        return 0.3; // Default moderate risk
+    }
+    
+    const profile = safetyProfile.profile;
+    let riskScore = 0.1; // Base risk
+    
+    // Factor in adverse event frequency
+    if (profile.total_adverse_events > 1000) riskScore += 0.3;
+    else if (profile.total_adverse_events > 500) riskScore += 0.2;
+    else if (profile.total_adverse_events > 100) riskScore += 0.1;
+    
+    // Factor in serious events ratio
+    if (profile.serious_events_ratio > 0.3) riskScore += 0.4;
+    else if (profile.serious_events_ratio > 0.2) riskScore += 0.3;
+    else if (profile.serious_events_ratio > 0.1) riskScore += 0.2;
+    
+    // Factor in black box warnings
+    if (profile.has_black_box_warning) riskScore += 0.3;
+    
+    // Factor in recalls
+    if (profile.recent_recalls > 2) riskScore += 0.2;
+    else if (profile.recent_recalls > 0) riskScore += 0.1;
+    
+    return Math.min(riskScore, 1.0);
+}
+
+/**
+ * Extract warnings from drug labeling
+ */
+function extractLabelingWarnings(labeling1, labeling2) {
+    const warnings = [];
+    
+    [labeling1, labeling2].forEach(labeling => {
+        if (labeling.success && labeling.data?.results) {
+            labeling.data.results.forEach(result => {
+                if (result.warnings && Array.isArray(result.warnings)) {
+                    warnings.push(...result.warnings.slice(0, 3));
+                }
+            });
+        }
+    });
+    
+    return [...new Set(warnings)];
+}
+
+/**
+ * Extract contraindications from drug labeling
+ */
+function extractLabelingContraindications(labeling1, labeling2) {
+    const contraindications = [];
+    
+    [labeling1, labeling2].forEach(labeling => {
+        if (labeling.success && labeling.data?.results) {
+            labeling.data.results.forEach(result => {
+                if (result.contraindications && Array.isArray(result.contraindications)) {
+                    contraindications.push(...result.contraindications.slice(0, 2));
+                }
+            });
+        }
+    });
+    
+    return [...new Set(contraindications)];
+}
+
+/**
+ * Generate monitoring parameters based on severity and reactions
+ */
+function generateMonitoringParameters(severity, reactions) {
+    const baseParameters = ['Vital signs', 'Patient symptoms'];
+    
+    // Add specific monitoring based on common reactions
+    const specificMonitoring = [];
+    reactions.forEach(reaction => {
+        const reactionLower = reaction.reaction.toLowerCase();
+        if (reactionLower.includes('cardiac') || reactionLower.includes('heart')) {
+            specificMonitoring.push('ECG monitoring');
+        }
+        if (reactionLower.includes('liver') || reactionLower.includes('hepatic')) {
+            specificMonitoring.push('Liver function tests');
+        }
+        if (reactionLower.includes('kidney') || reactionLower.includes('renal')) {
+            specificMonitoring.push('Renal function tests');
+        }
+        if (reactionLower.includes('bleeding')) {
+            specificMonitoring.push('Coagulation studies');
+        }
+    });
+    
+    const frequency = severity === 'MAJOR' ? 'Daily' : severity === 'MODERATE' ? 'Weekly' : 'As needed';
+    
+    return {
+        parameters: [...new Set([...baseParameters, ...specificMonitoring])],
+        frequency,
+        duration: severity === 'MAJOR' ? '2-4 weeks' : '1-2 weeks'
+    };
+}
+
+/**
  * Validate drug names against database
  */
 async function validateDrugNames(transcriptionText) {

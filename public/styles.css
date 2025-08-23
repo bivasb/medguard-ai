@@ -2341,6 +2341,175 @@ body {
     margin: 0;
 }
 
+/* FDA Warnings and Contraindications */
+.fda-warnings-section,
+.fda-contraindications-section,
+.safety-profiles-section,
+.monitoring-section {
+    margin-top: 1.5rem;
+    padding: 1rem;
+    background: var(--surface-light);
+    border-radius: 8px;
+    border-left: 4px solid var(--warning);
+}
+
+.fda-contraindications-section {
+    border-left-color: var(--danger);
+}
+
+.safety-profiles-section {
+    border-left-color: var(--info);
+}
+
+.monitoring-section {
+    border-left-color: var(--success);
+}
+
+.fda-warnings-list,
+.fda-contraindications-list {
+    display: grid;
+    gap: 0.75rem;
+    margin-top: 0.75rem;
+}
+
+.warning-item,
+.contraindication-item {
+    padding: 0.75rem;
+    background: var(--surface);
+    border-radius: 6px;
+    border-left: 3px solid var(--warning);
+    font-size: 0.875rem;
+    line-height: 1.4;
+}
+
+.contraindication-item {
+    border-left-color: var(--danger);
+}
+
+.safety-profile-drug {
+    margin-bottom: 1rem;
+    padding: 1rem;
+    background: var(--surface);
+    border-radius: 6px;
+    border: 1px solid var(--border-color);
+}
+
+.safety-profile-drug h4 {
+    margin: 0 0 0.75rem 0;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.risk-score {
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.risk-score.low {
+    background: var(--success-light);
+    color: var(--success);
+}
+
+.risk-score.medium {
+    background: var(--warning-light);
+    color: var(--warning);
+}
+
+.risk-score.high {
+    background: var(--danger-light);
+    color: var(--danger);
+}
+
+.safety-metrics {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 0.75rem;
+    margin-top: 0.75rem;
+}
+
+.safety-metric {
+    padding: 0.5rem;
+    background: var(--surface-light);
+    border-radius: 4px;
+    text-align: center;
+}
+
+.metric-value {
+    font-weight: 600;
+    font-size: 1.1em;
+    color: var(--text-primary);
+}
+
+.metric-label {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    margin-top: 0.25rem;
+}
+
+.monitoring-parameters {
+    display: grid;
+    gap: 1rem;
+    margin-top: 0.75rem;
+}
+
+.monitoring-parameter {
+    padding: 0.75rem;
+    background: var(--surface);
+    border-radius: 6px;
+    border-left: 3px solid var(--success);
+}
+
+.monitoring-parameter h4 {
+    margin: 0 0 0.5rem 0;
+    color: var(--text-primary);
+    font-size: 0.875rem;
+}
+
+.monitoring-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.monitoring-list li {
+    padding: 0.25rem 0;
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+}
+
+.monitoring-list li::before {
+    content: "✓";
+    color: var(--success);
+    font-weight: bold;
+    margin-right: 0.5rem;
+}
+
+.data-source-indicator {
+    margin-top: 1rem;
+    padding: 0.75rem;
+    background: var(--surface-light);
+    border-radius: 6px;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    border: 1px solid var(--border-color);
+}
+
+.source-badge {
+    display: inline-block;
+    padding: 0.2rem 0.5rem;
+    margin: 0.25rem 0.25rem 0 0;
+    background: var(--info-light);
+    color: var(--info);
+    border-radius: 3px;
+    font-weight: 500;
+}
+
 /* Responsive grid for upload methods */
 @media (max-width: 768px) {
     .upload-methods {
@@ -2360,6 +2529,18 @@ body {
     
     .quick-upload-area {
         min-height: 80px;
+        padding: 0.75rem;
+    }
+
+    .safety-metrics {
+        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+        gap: 0.5rem;
+    }
+
+    .fda-warnings-section,
+    .fda-contraindications-section,
+    .safety-profiles-section,
+    .monitoring-section {
         padding: 0.75rem;
     }
 }
