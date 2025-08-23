@@ -20,6 +20,7 @@ import { DrugNormalizerSubagent } from "../subagents/drug-normalizer.js";
 import { InteractionCheckerSubagent } from "../subagents/interaction-checker.js";
 import { PatientContextSubagent } from "../subagents/patient-context.js";
 import { RiskAssessorSubagent } from "../subagents/risk-assessor.js";
+import { DosageValidatorSubagent } from "../subagents/dosage-validator.js";
 
 /**
  * STATE SCHEMA
@@ -75,6 +76,7 @@ export class PrimaryAgent {
     this.interactionChecker = new InteractionCheckerSubagent();
     this.patientContext = new PatientContextSubagent();
     this.riskAssessor = new RiskAssessorSubagent();
+    this.dosageValidator = new DosageValidatorSubagent();
     
     // Build the state graph
     this.graph = this.buildGraph();
@@ -453,6 +455,107 @@ export class PrimaryAgent {
     workflow.setEntryPoint("parse_input");
     
     return workflow.compile();
+  }
+
+  /**
+   * Execute dosage validation
+   * New Phase 2 functionality for validating drug dosages
+   */
+  async validateDosage(drugInfo, patientId) {
+    this.log("🧪 Starting dosage validation");
+    this.log(`Drug: ${drugInfo.drug_name || drugInfo.name}`);
+    this.log(`Dosage: ${drugInfo.dosage || drugInfo.dose}`);
+    if (patientId) this.log(`Patient: ${patientId}`);
+
+    const initialState = {
+      ...StateSchema,
+      raw_drugs: [drugInfo.drug_name || drugInfo.name],
+      patient_id: patientId,
+      dosage_info: drugInfo,
+      processing_steps: [],
+      errors: [],
+      task_results: {},
+      workflow_type: 'dosage_validation'
+    };
+
+    try {
+      // For Phase 2, we'll create a simplified validation flow
+      const startTime = Date.now();
+      
+      // Step 1: Get patient context
+      let patientContext = null;
+      if (patientId) {
+        const contextTask = {
+          task_id: `patient_context_${Date.now()}`,
+          task_type: "patient_context_retrieval",
+          objective: "Retrieve patient medical history for dosage validation",
+          input: { patient_id: patientId },
+          constraints: { timeout_ms: 2000 },
+          output_spec: {
+            format: "json",
+            required_fields: ["demographics", "conditions", "lab_values"]
+          }
+        };
+        
+        const contextResult = await this.patientContext.execute(contextTask);
+        if (contextResult.status === 'complete') {
+          patientContext = contextResult.result;
+        }
+      }
+
+      // Step 2: Validate dosage
+      const dosageTask = {
+        task_id: `dosage_validation_${Date.now()}`,
+        task_type: "dosage_validation",
+        objective: "Validate proposed dosage against clinical guidelines",
+        input: {
+          drug: drugInfo,
+          patient_context: patientContext
+        },
+        constraints: { timeout_ms: 3000 },
+        output_spec: {
+          format: "json",
+          required_fields: ["validation_status", "explanation", "recommendations"]
+        }
+      };
+
+      const validationResult = await this.dosageValidator.execute(dosageTask);
+      
+      if (validationResult.status === 'complete') {
+        const processingTime = Date.now() - startTime;
+        
+        return {
+          validation_status: validationResult.result.validation_status,
+          explanation: validationResult.result.explanation,
+          recommendations: validationResult.result.recommendations,
+          proposed_dose: validationResult.result.proposed_dose,
+          recommended_dose_range: validationResult.result.recommended_dose_range,
+          patient_adjustments: validationResult.result.patient_adjustments,
+          contraindications: validationResult.result.contraindications,
+          monitoring_required: validationResult.result.monitoring_required,
+          processing_time_ms: processingTime,
+          patient_context: patientContext,
+          metadata: {
+            confidence: validationResult.result.confidence,
+            workflow: 'dosage_validation',
+            version: 'phase_2'
+          }
+        };
+      } else {
+        throw new Error(validationResult.error || 'Dosage validation failed');
+      }
+
+    } catch (error) {
+      this.log(`❌ Dosage validation error: ${error.message}`);
+      
+      return {
+        validation_status: 'ERROR',
+        explanation: 'Unable to complete dosage validation',
+        recommendations: ['Manual verification required'],
+        error: error.message,
+        processing_time_ms: Date.now() - initialState.processing_steps[0]?.timestamp || 0
+      };
+    }
   }
 
   /**

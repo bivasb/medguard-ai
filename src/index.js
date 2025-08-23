@@ -84,6 +84,56 @@ class MedGuardAIServer {
       });
     });
 
+    // Dosage validation endpoint
+    this.app.post('/api/validate-dosage', async (req, res) => {
+      try {
+        const startTime = Date.now();
+        const { drug, patient_id } = req.body;
+
+        // Validate input
+        if (!drug || !drug.drug_name || !drug.dosage) {
+          return res.status(400).json({
+            error: 'Invalid input: drug name and dosage required',
+            code: 'INVALID_DOSAGE_INPUT'
+          });
+        }
+
+        if (!patient_id) {
+          return res.status(400).json({
+            error: 'Invalid input: patient_id required for dosage validation',
+            code: 'MISSING_PATIENT_ID'
+          });
+        }
+
+        console.log(`💊 Validating dosage: ${drug.drug_name} ${drug.dosage}`);
+        if (patient_id) console.log(`👤 Patient context: ${patient_id}`);
+
+        // Call primary agent to validate dosage
+        const result = await this.primaryAgent.validateDosage(drug, patient_id);
+
+        // Add request metadata
+        result.request_info = {
+          drug: drug,
+          patient_id,
+          timestamp: new Date().toISOString(),
+          request_id: this.generateRequestId()
+        };
+
+        console.log(`✅ Dosage validation completed: ${result.validation_status} (${Date.now() - startTime}ms)`);
+
+        res.json(result);
+
+      } catch (error) {
+        console.error('❌ Error in dosage validation:', error);
+        
+        res.status(500).json({
+          error: 'Internal server error during dosage validation',
+          message: error.message,
+          code: 'DOSAGE_VALIDATION_FAILED'
+        });
+      }
+    });
+
     // Main drug interaction check endpoint
     this.app.post('/api/check-interaction', async (req, res) => {
       try {
