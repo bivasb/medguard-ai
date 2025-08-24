@@ -133,6 +133,17 @@ class MedGuardApp {
             this.lastUpdatedSpan.textContent = new Date().toLocaleDateString();
         }
         
+        // Clinical Notes elements
+        this.clinicalNotes = document.getElementById('clinicalNotes');
+        this.clinicalNotesMic = document.getElementById('clinicalNotesMic');
+        this.clinicalContextSuggestions = document.getElementById('clinicalContextSuggestions');
+        this.contextSuggestionBtns = document.querySelectorAll('.context-suggestion-btn');
+        
+        // Clinical Summary and Expandable Sections
+        this.clinicalSummaryCards = document.getElementById('clinicalSummaryCards');
+        this.detailedSections = document.getElementById('detailedSections');
+        this.sectionToggles = document.querySelectorAll('.section-toggle');
+        
         // Initialize voice recognition
         this.initializeVoiceInput();
     }
@@ -282,6 +293,24 @@ class MedGuardApp {
 
         this.quickStopCameraBtn?.addEventListener('click', () => {
             this.stopQuickCamera();
+        });
+
+        // Clinical Notes Events
+        this.contextSuggestionBtns?.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                const context = btn.dataset.context;
+                this.addClinicalContext(context, btn.textContent);
+            });
+        });
+
+        // Expandable Section Events
+        this.sectionToggles?.forEach(toggle => {
+            toggle.addEventListener('click', (e) => {
+                e.preventDefault();
+                const targetId = toggle.dataset.target;
+                this.toggleSection(toggle, targetId);
+            });
         });
     }
 
@@ -1574,6 +1603,9 @@ class MedGuardApp {
             // Try to call real API first (MCP server -> FDA/RxNorm)
             const apiResponse = await this.callRealInteractionAPI(drugs, patientId);
             
+            // Also fetch DailyMed data for additional drug information
+            const dailyMedData = await this.fetchDailyMedData(drugs);
+            
             // Log successful API call to MCP server (which uses real FDA/RxNorm APIs)
             this.logger.logApiCall({
                 service: 'mcp-server',
@@ -1599,6 +1631,9 @@ class MedGuardApp {
                     }
                 });
             }
+
+            // Enhance the response with DailyMed data
+            apiResponse.dailymed_data = dailyMedData;
 
             return apiResponse;
         } catch (error) {
@@ -1657,6 +1692,40 @@ class MedGuardApp {
         console.log('✅ Received FDA/RxNorm data from MCP server');
         
         return result;
+    }
+
+    async fetchDailyMedData(drugNames) {
+        const dailyMedData = [];
+        
+        for (const drugName of drugNames) {
+            try {
+                console.log(`🏛️ Fetching DailyMed data for: ${drugName}`);
+                
+                const response = await fetch(`http://localhost:3001/api/dailymed/drug/${encodeURIComponent(drugName)}`);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.success) {
+                        dailyMedData.push({
+                            drugName: drugName,
+                            profile: data.drug_profile,
+                            alternatives: data.alternative_matches || [],
+                            source: data.source,
+                            fromCache: data.from_cache
+                        });
+                        console.log(`✅ DailyMed data retrieved for ${drugName}`);
+                    } else {
+                        console.warn(`⚠️ DailyMed lookup failed for ${drugName}:`, data.error);
+                    }
+                } else {
+                    console.warn(`⚠️ DailyMed API error for ${drugName}: ${response.status}`);
+                }
+            } catch (error) {
+                console.error(`❌ DailyMed fetch error for ${drugName}:`, error);
+            }
+        }
+        
+        return dailyMedData;
     }
 
     async simulatePrimaryAgent(drugs, patientId) {
@@ -2084,6 +2153,9 @@ class MedGuardApp {
         elements.responseTime.textContent = `${result.processing_time_ms || 0}ms`;
         elements.checkDate.textContent = new Date().toLocaleString();
 
+        // Display DailyMed data if available
+        this.displayDailyMedData(result.dailymed_data, elements);
+
         // Add pulse animation for dangerous interactions
         if (riskLevel === 'DANGER') {
             const card = elements.badge.closest('.result-card');
@@ -2092,6 +2164,158 @@ class MedGuardApp {
                 card.style.animation = '';
             }, 6000);
         }
+    }
+
+    displayDailyMedData(dailyMedData, elements) {
+        if (!dailyMedData || dailyMedData.length === 0) {
+            return; // No DailyMed data to display
+        }
+
+        // Create DailyMed section if it doesn't exist
+        const container = elements.badge.closest('.result-card');
+        let dailyMedSection = container.querySelector('.dailymed-section');
+        
+        if (!dailyMedSection) {
+            dailyMedSection = document.createElement('div');
+            dailyMedSection.className = 'dailymed-section';
+            dailyMedSection.innerHTML = `
+                <h3 class="section-title">
+                    🏛️ NIH DailyMed - Official FDA Information
+                </h3>
+                <div class="dailymed-drugs"></div>
+            `;
+            
+            // Insert after safety profiles section
+            const safetySection = container.querySelector('.safety-profiles-section');
+            if (safetySection) {
+                safetySection.parentNode.insertBefore(dailyMedSection, safetySection.nextSibling);
+            } else {
+                // Insert before patient section
+                const patientSection = container.querySelector('.patient-context-section');
+                if (patientSection) {
+                    patientSection.parentNode.insertBefore(dailyMedSection, patientSection);
+                } else {
+                    container.appendChild(dailyMedSection);
+                }
+            }
+        }
+
+        const drugsContainer = dailyMedSection.querySelector('.dailymed-drugs');
+        drugsContainer.innerHTML = '';
+
+        // Display each drug's DailyMed data
+        dailyMedData.forEach(drugData => {
+            const drugCard = document.createElement('div');
+            drugCard.className = 'dailymed-drug-card';
+            
+            const profile = drugData.profile;
+            
+            drugCard.innerHTML = `
+                <div class="dailymed-drug-header">
+                    <h4>${profile.generic_name || drugData.drugName}</h4>
+                    <span class="dailymed-source">${drugData.source}</span>
+                    ${drugData.fromCache ? '<span class="cache-indicator">Cached</span>' : ''}
+                </div>
+                
+                <div class="dailymed-drug-details">
+                    <div class="dailymed-row">
+                        <div class="dailymed-field">
+                            <strong>Official Name:</strong>
+                            <div class="dailymed-value">${profile.title}</div>
+                        </div>
+                    </div>
+                    
+                    <div class="dailymed-row">
+                        <div class="dailymed-field">
+                            <strong>Dosage Forms:</strong>
+                            <div class="dailymed-value">
+                                ${profile.dosage_forms && profile.dosage_forms.length > 0 
+                                    ? profile.dosage_forms.map(form => `<span class="dosage-form">${form}</span>`).join(' ')
+                                    : 'Not specified'
+                                }
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="dailymed-row">
+                        <div class="dailymed-field">
+                            <strong>Manufacturers:</strong>
+                            <div class="dailymed-value">
+                                ${profile.manufacturers && profile.manufacturers.length > 0
+                                    ? profile.manufacturers.slice(0, 3).join(', ')
+                                    : 'Various manufacturers'
+                                }
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="dailymed-row">
+                        <div class="dailymed-field">
+                            <strong>Available Formulations:</strong>
+                            <div class="dailymed-value">${profile.total_formulations || 1} FDA-approved formulations</div>
+                        </div>
+                    </div>
+                    
+                    <div class="dailymed-row">
+                        <div class="dailymed-field">
+                            <strong>Last Updated:</strong>
+                            <div class="dailymed-value">${profile.published_date || profile.last_updated}</div>
+                        </div>
+                    </div>
+
+                    ${profile.clinical_insights && profile.clinical_insights.length > 0 ? `
+                        <div class="dailymed-clinical-insights">
+                            <strong>Clinical Decision Support:</strong>
+                            <div class="clinical-insights-list">
+                                ${profile.clinical_insights.map(insight => `
+                                    <div class="clinical-insight ${insight.severity}">
+                                        <span class="insight-icon">
+                                            ${insight.severity === 'warning' ? '⚠️' : insight.severity === 'caution' ? '🔍' : 'ℹ️'}
+                                        </span>
+                                        <span class="insight-message">${insight.message}</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    ` : ''}
+
+                    ${profile.formulation_guidance && profile.formulation_guidance.length > 0 ? `
+                        <div class="dailymed-formulation-guidance">
+                            <strong>Formulation Guidance:</strong>
+                            <div class="formulation-guidance-list">
+                                ${profile.formulation_guidance.map(guidance => `
+                                    <div class="formulation-guidance-item">💡 ${guidance}</div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    ` : ''}
+                    
+                    ${drugData.alternatives && drugData.alternatives.length > 0 ? `
+                        <div class="dailymed-alternatives">
+                            <strong>Alternative Formulations:</strong>
+                            <div class="alternatives-list">
+                                ${drugData.alternatives.slice(0, 3).map(alt => `
+                                    <div class="alternative-item">
+                                        <span class="alternative-title">${alt.title}</span>
+                                        <span class="alternative-date">${alt.published_date}</span>
+                                    </div>
+                                `).join('')}
+                                ${drugData.alternatives.length > 3 ? `<div class="more-alternatives">+${drugData.alternatives.length - 3} more formulations</div>` : ''}
+                            </div>
+                        </div>
+                    ` : ''}
+                </div>
+                
+                <div class="dailymed-note">
+                    <small><em>${profile.note || 'This data is from the official FDA DailyMed database'}</em></small>
+                </div>
+            `;
+
+            drugsContainer.appendChild(drugCard);
+        });
+
+        // Show the section
+        dailyMedSection.style.display = 'block';
     }
 
     displayLegacyResult(result, elements) {
@@ -3790,7 +4014,8 @@ class MedGuardApp {
             { button: this.drug1Mic, input: this.drug1Input, fieldName: 'drug1' },
             { button: this.drug2Mic, input: this.drug2Input, fieldName: 'drug2' },
             { button: this.drug3Mic, input: this.drug3Input, fieldName: 'drug3' },
-            { button: this.drugNameMic, input: this.drugNameInput, fieldName: 'drugName' }
+            { button: this.drugNameMic, input: this.drugNameInput, fieldName: 'drugName' },
+            { button: this.clinicalNotesMic, input: this.clinicalNotes, fieldName: 'clinicalNotes' }
         ];
 
         micButtons.forEach(({ button, input, fieldName }) => {
@@ -3839,7 +4064,13 @@ class MedGuardApp {
 
             // Set recording state
             micButton.classList.add('recording');
-            this.showNotification('Recording... speak the drug name clearly', 'info');
+            
+            // Different prompts for different field types
+            if (fieldName === 'clinicalNotes') {
+                this.showNotification('Recording... describe the clinical context', 'info');
+            } else {
+                this.showNotification('Recording... speak the drug name clearly', 'info');
+            }
 
             // Setup MediaRecorder
             const mediaRecorder = new MediaRecorder(stream, {
@@ -3866,8 +4097,12 @@ class MedGuardApp {
                 // Create audio blob
                 const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
                 
-                // Send to backend for transcription
-                await this.processVoiceInput(audioBlob, inputField, micButton, fieldName);
+                // Handle different field types
+                if (fieldName === 'clinicalNotes') {
+                    await this.processClinicalNotesVoice(audioBlob, inputField, micButton);
+                } else {
+                    await this.processVoiceInput(audioBlob, inputField, micButton, fieldName);
+                }
             };
 
             // Start recording
@@ -4055,6 +4290,233 @@ class MedGuardApp {
             notification.classList.remove('show');
         }, 4000);
     }
+
+    // Clinical Notes Functionality
+    addClinicalContext(context, displayText) {
+        if (!this.clinicalNotes) return;
+        
+        const contextMap = {
+            'surgery': 'Patient has surgery scheduled in 5 days',
+            'infection': 'Patient has current infection being treated',
+            'elderly': 'Elderly patient (>75 years) - consider Beers Criteria',
+            'kidney': 'Patient has kidney disease (CKD) - monitor renal function',
+            'pregnancy': 'Patient is pregnant or breastfeeding',
+            'allergy': 'Patient has history of drug allergies'
+        };
+        
+        const contextText = contextMap[context] || displayText;
+        const currentValue = this.clinicalNotes.value.trim();
+        
+        // Add context with bullet point formatting
+        if (currentValue) {
+            this.clinicalNotes.value = `${currentValue}\n• ${contextText}`;
+        } else {
+            this.clinicalNotes.value = `• ${contextText}`;
+        }
+        
+        // Trigger change event and focus
+        this.clinicalNotes.dispatchEvent(new Event('change'));
+        this.clinicalNotes.focus();
+        
+        // Log the action
+        this.logger.logUserAction('clinical_context_added', {
+            context: context,
+            text: contextText
+        });
+    }
+
+    // Expandable Section Toggle
+    toggleSection(toggle, targetId) {
+        if (!targetId) return;
+        
+        const targetSection = document.getElementById(targetId);
+        if (!targetSection) return;
+        
+        const isExpanded = toggle.classList.contains('expanded');
+        
+        if (isExpanded) {
+            // Collapse
+            toggle.classList.remove('expanded');
+            targetSection.classList.remove('expanded');
+        } else {
+            // Expand
+            toggle.classList.add('expanded');
+            targetSection.classList.add('expanded');
+        }
+        
+        // Log the action
+        this.logger.logUserAction('section_toggled', {
+            sectionId: targetId,
+            action: isExpanded ? 'collapsed' : 'expanded'
+        });
+    }
+
+    // Display Clinical Interaction Results (Enhanced UI)
+    displayClinicalResults(results, drugs) {
+        if (!results || !this.clinicalSummaryCards || !this.detailedSections) {
+            return this.displayResult(results, drugs); // Fallback to standard display
+        }
+
+        // Show the clinical summary cards
+        this.clinicalSummaryCards.style.display = 'grid';
+        this.detailedSections.style.display = 'block';
+
+        // Update summary cards
+        this.updateSummaryCard('drugDiseaseCount', 'drugDiseaseDetail', results.drug_disease || []);
+        this.updateSummaryCard('drugFoodCount', 'drugFoodDetail', results.drug_food || []);
+        this.updateSummaryCard('elderlyCount', 'elderlyDetail', results.age_specific || []);
+        this.updateSummaryCard('contextCount', 'contextDetail', results.context_specific || []);
+
+        // Populate detailed sections
+        this.populateDetailedSection('drugDiseaseDetails', results.drug_disease || [], 'Drug-Disease Interactions');
+        this.populateDetailedSection('drugFoodDetails', results.drug_food || [], 'Drug-Food Interactions');
+        this.populateDetailedSection('elderlyDetails', results.age_specific || [], 'Elderly Patient Considerations');
+        this.populateDetailedSection('contextDetails', results.context_specific || [], 'Clinical Context Recommendations');
+
+        // Update section counts
+        this.updateSectionCounts();
+    }
+
+    updateSummaryCard(countId, detailId, interactions) {
+        const countEl = document.getElementById(countId);
+        const detailEl = document.getElementById(detailId);
+        
+        if (!countEl || !detailEl) return;
+        
+        const count = interactions.length;
+        const severity = this.getHighestSeverity(interactions);
+        
+        countEl.textContent = count;
+        
+        if (count === 0) {
+            detailEl.textContent = 'No interactions found';
+            detailEl.className = 'card-detail';
+        } else {
+            const severityText = severity === 'MAJOR' ? 'High priority' : 
+                               severity === 'MODERATE' ? 'Monitor closely' : 
+                               'Review recommended';
+            detailEl.textContent = `${count} interaction${count > 1 ? 's' : ''} - ${severityText}`;
+            detailEl.className = `card-detail severity-${severity.toLowerCase()}`;
+        }
+    }
+
+    populateDetailedSection(sectionId, interactions, title) {
+        const section = document.getElementById(sectionId);
+        if (!section) return;
+        
+        if (interactions.length === 0) {
+            section.innerHTML = `<p>No ${title.toLowerCase()} found.</p>`;
+            return;
+        }
+        
+        const html = interactions.map(interaction => {
+            const severity = interaction.severity || 'MINOR';
+            const mechanism = interaction.mechanism || interaction.reason || '';
+            const recommendation = interaction.alternatives?.join(', ') || interaction.monitoring || interaction.action || '';
+            
+            return `
+                <div class="interaction-item">
+                    <h5>${interaction.drug || interaction.category || 'Interaction'} ${interaction.disease || interaction.food_category || interaction.condition || ''}</h5>
+                    <span class="severity-badge severity-${severity.toLowerCase()}">${severity}</span>
+                    ${mechanism ? `<p class="mechanism">${mechanism}</p>` : ''}
+                    ${recommendation ? `<div class="recommendation">${recommendation}</div>` : ''}
+                </div>
+            `;
+        }).join('');
+        
+        section.innerHTML = html;
+    }
+
+    updateSectionCounts() {
+        this.sectionToggles?.forEach(toggle => {
+            const targetId = toggle.dataset.target;
+            const targetSection = document.getElementById(targetId);
+            const countSpan = toggle.querySelector('.section-count');
+            
+            if (targetSection && countSpan) {
+                const interactionItems = targetSection.querySelectorAll('.interaction-item');
+                countSpan.textContent = interactionItems.length;
+                
+                // Hide section if no interactions
+                if (interactionItems.length === 0) {
+                    toggle.parentElement.style.display = 'none';
+                } else {
+                    toggle.parentElement.style.display = 'block';
+                }
+            }
+        });
+    }
+
+    getHighestSeverity(interactions) {
+        if (!interactions || interactions.length === 0) return 'MINOR';
+        
+        const severities = interactions.map(i => i.severity || 'MINOR');
+        
+        if (severities.includes('MAJOR') || severities.includes('CONTRAINDICATED')) return 'MAJOR';
+        if (severities.includes('MODERATE')) return 'MODERATE';
+        return 'MINOR';
+    }
+
+    // Clinical Notes Voice Processing - Natural Language Transcription
+    async processClinicalNotesVoice(audioBlob, inputField, micButton) {
+        try {
+            // Prepare form data for backend
+            const formData = new FormData();
+            formData.append('audio', audioBlob, 'clinical-voice.webm');
+            formData.append('transcription_type', 'natural_language'); // Flag for natural language processing
+            
+            // Send to backend transcription service with different endpoint or flag
+            const response = await fetch('http://localhost:3002/api/transcribe-clinical', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (!response.ok) {
+                throw new Error(`Clinical transcription failed: ${response.status}`);
+            }
+
+            const result = await response.json();
+            
+            if (result.success && result.transcription) {
+                // For clinical notes, just use the raw transcription
+                const currentValue = inputField.value.trim();
+                const transcription = result.transcription;
+                
+                // Add to existing text with proper formatting
+                if (currentValue) {
+                    inputField.value = `${currentValue}\n• ${transcription}`;
+                } else {
+                    inputField.value = `• ${transcription}`;
+                }
+                
+                // Show success state
+                micButton.classList.remove('processing');
+                micButton.classList.add('success');
+                
+                this.showNotification(`Clinical note recorded: "${transcription}"`, 'success');
+                
+                // Focus on the field and trigger change event
+                inputField.focus();
+                inputField.dispatchEvent(new Event('change'));
+                
+            } else {
+                throw new Error(result.error || 'Failed to transcribe clinical notes');
+            }
+            
+        } catch (error) {
+            console.error('Clinical notes voice processing error:', error);
+            
+            // Show error state
+            micButton.classList.remove('processing');
+            this.showNotification('Failed to process clinical notes. Please try again.', 'error');
+            
+        } finally {
+            // Reset button state after 2 seconds
+            setTimeout(() => {
+                micButton.classList.remove('success', 'processing');
+            }, 2000);
+        }
+    }
 }
 
 // Initialize the application when DOM is loaded
@@ -4063,6 +4525,6 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // Add some console styling
-console.log('%c🏥 MedGuard AI Phase 3', 'font-size: 24px; color: #0066ff; font-weight: bold;');
-console.log('%cBatch Prescription Review & Voice Input', 'font-size: 14px; color: #8b5cf6;');
+console.log('%c🏥 MedGuard AI Phase 6', 'font-size: 24px; color: #0066ff; font-weight: bold;');
+console.log('%cClinical Interaction Intelligence & Enhanced UI', 'font-size: 14px; color: #8b5cf6;');
 console.log('%cBuilt with LangGraph & MCP', 'font-size: 12px; color: #6b7280;');

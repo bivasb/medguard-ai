@@ -11,6 +11,7 @@ const OpenAI = require('openai');
 const { QdrantClient } = require('@qdrant/js-client-rest');
 const RxNormService = require('./services/rxnorm-service');
 const OpenFDAService = require('./services/openfda-service');
+const DailyMedService = require('./services/dailymed-service');
 require('dotenv').config();
 
 const app = express();
@@ -27,9 +28,10 @@ const qdrant = new QdrantClient({
     apiKey: process.env.QDRANT_API_KEY
 });
 
-// Initialize FDA and RxNorm services
+// Initialize FDA, RxNorm, and DailyMed services
 const rxNormService = new RxNormService();
 const openFDAService = new OpenFDAService();
+const dailyMedService = new DailyMedService();
 
 // Configure multer for audio file uploads
 const upload = multer({
@@ -95,6 +97,50 @@ app.post('/api/transcribe', upload.single('audio'), async (req, res) => {
         console.error('Transcription error:', error);
         res.status(500).json({ 
             error: 'Transcription failed',
+            message: error.message 
+        });
+    }
+});
+
+/**
+ * Clinical Notes Transcription Endpoint
+ * Uses OpenAI Whisper for natural language transcription without drug validation
+ */
+app.post('/api/transcribe-clinical', upload.single('audio'), async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ error: 'No audio file provided' });
+        }
+
+        console.log(`Transcribing clinical notes audio: ${req.file.originalname}, size: ${req.file.size} bytes`);
+
+        // Create a File object for OpenAI API
+        const audioFile = new File([req.file.buffer], req.file.originalname, {
+            type: req.file.mimetype
+        });
+
+        // Transcribe using OpenAI Whisper with clinical context prompt
+        const transcription = await openai.audio.transcriptions.create({
+            file: audioFile,
+            model: 'whisper-1',
+            language: 'en',
+            prompt: 'This is clinical context about a patient including surgery, medical conditions, allergies, and treatment notes.'
+        });
+
+        console.log(`Clinical notes transcription: "${transcription.text}"`);
+
+        // For clinical notes, return raw transcription without drug validation
+        res.json({
+            success: true,
+            transcription: transcription.text,
+            type: 'clinical_notes',
+            processing_time: new Date().toISOString()
+        });
+
+    } catch (error) {
+        console.error('Clinical notes transcription error:', error);
+        res.status(500).json({ 
+            error: 'Clinical transcription failed',
             message: error.message 
         });
     }
@@ -809,12 +855,150 @@ async function initializeDrugDatabase() {
     return true;
 }
 
+/**
+ * DailyMed Drug Information Endpoint
+ * Get official FDA prescribing information
+ */
+app.get('/api/dailymed/drug/:drugName', async (req, res) => {
+    try {
+        const { drugName } = req.params;
+        
+        if (!drugName) {
+            return res.status(400).json({ error: 'Drug name is required' });
+        }
+
+        console.log(`📋 Getting DailyMed info for: ${drugName}`);
+        
+        const profile = await dailyMedService.getComprehensiveDrugProfile(drugName);
+        
+        res.json({
+            success: profile.success,
+            drug_name: drugName,
+            dailymed_profile: profile.drug_profile || null,
+            alternatives: profile.alternative_matches || [],
+            source: 'NIH DailyMed',
+            timestamp: new Date().toISOString(),
+            from_cache: profile.from_cache || false,
+            error: profile.error || null
+        });
+
+    } catch (error) {
+        console.error('DailyMed endpoint error:', error);
+        res.status(500).json({ 
+            error: 'Failed to get DailyMed information',
+            message: error.message 
+        });
+    }
+});
+
+/**
+ * DailyMed Search Endpoint
+ * Search for drugs by name or ingredient
+ */
+app.post('/api/dailymed/search', async (req, res) => {
+    try {
+        const { query, type = 'drug_name', limit = 10 } = req.body;
+        
+        if (!query) {
+            return res.status(400).json({ error: 'Search query is required' });
+        }
+
+        console.log(`🔍 DailyMed search: "${query}" (type: ${type})`);
+        
+        let result;
+        if (type === 'ingredient') {
+            result = await dailyMedService.searchByIngredient(query, limit);
+        } else {
+            result = await dailyMedService.searchDrugByName(query, limit);
+        }
+        
+        res.json({
+            success: result.success,
+            query,
+            search_type: type,
+            results: result.data?.data || [],
+            total_count: result.data?.metadata?.total_elements || 0,
+            source: 'NIH DailyMed',
+            timestamp: new Date().toISOString(),
+            from_cache: result.from_cache || false,
+            error: result.error || null
+        });
+
+    } catch (error) {
+        console.error('DailyMed search endpoint error:', error);
+        res.status(500).json({ 
+            error: 'Failed to search DailyMed',
+            message: error.message 
+        });
+    }
+});
+
+/**
+ * DailyMed Drug Details Endpoint
+ * Get detailed information by SPL ID
+ */
+app.get('/api/dailymed/details/:splId', async (req, res) => {
+    try {
+        const { splId } = req.params;
+        
+        if (!splId) {
+            return res.status(400).json({ error: 'SPL ID is required' });
+        }
+
+        console.log(`📄 Getting DailyMed details for SPL ID: ${splId}`);
+        
+        const details = await dailyMedService.getDrugDetails(splId);
+        
+        res.json({
+            success: details.success,
+            spl_id: splId,
+            drug_details: details.data || null,
+            source: 'NIH DailyMed',
+            timestamp: new Date().toISOString(),
+            from_cache: details.from_cache || false,
+            error: details.error || null
+        });
+
+    } catch (error) {
+        console.error('DailyMed details endpoint error:', error);
+        res.status(500).json({ 
+            error: 'Failed to get DailyMed details',
+            message: error.message 
+        });
+    }
+});
+
+/**
+ * DailyMed Cache Stats Endpoint
+ */
+app.get('/api/dailymed/cache-stats', (req, res) => {
+    try {
+        const stats = dailyMedService.getCacheStats();
+        
+        res.json({
+            success: true,
+            cache_stats: stats,
+            source: 'NIH DailyMed',
+            timestamp: new Date().toISOString()
+        });
+
+    } catch (error) {
+        console.error('DailyMed cache stats error:', error);
+        res.status(500).json({ 
+            error: 'Failed to get cache stats',
+            message: error.message 
+        });
+    }
+});
+
 // Start server
 app.listen(port, () => {
     console.log(`🏥 MedGuard AI Backend Server running on port ${port}`);
     console.log(`📡 Health check: http://localhost:${port}/health`);
     console.log(`🎙️  Transcription API: http://localhost:${port}/api/transcribe`);
+    console.log(`🩺 Clinical transcription: http://localhost:${port}/api/transcribe-clinical`);
     console.log(`💊 Drug search API: http://localhost:${port}/api/drugs/search`);
+    console.log(`🏛️  DailyMed API: http://localhost:${port}/api/dailymed/*`);
 });
 
 module.exports = app;

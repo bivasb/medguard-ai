@@ -171,6 +171,37 @@
                     <small class="input-hint">Patient's current medication regimen</small>
                 </div>
 
+                <!-- Clinical Notes Section -->
+                <div class="input-group">
+                    <label for="clinicalNotes">Clinical Notes & Context</label>
+                    <div class="clinical-notes-container">
+                        <div class="input-with-mic">
+                            <textarea id="clinicalNotes" 
+                                      placeholder="Add clinical context like:
+• Patient has surgery scheduled in 5 days
+• Current infection being treated
+• Recent hospitalization
+• Allergies or adverse reactions
+• Pain management needs" 
+                                      rows="4"></textarea>
+                            <button type="button" class="mic-btn mic-btn-textarea" id="clinicalNotesMic" title="Voice input for clinical notes">
+                                <svg class="mic-icon" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M7 4a3 3 0 616 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8a1 1 0 10-2 0A5 5 0 715 8a1 1 0 00-2 0 7.001 7.001 0 006 6.93V17H6a1 1 0 100 2h8a1 1 0 100-2h-3v-2.07z" clip-rule="evenodd"/>
+                                </svg>
+                            </button>
+                        </div>
+                        <div class="clinical-context-suggestions" id="clinicalContextSuggestions">
+                            <button type="button" class="context-suggestion-btn" data-context="surgery">🔪 Surgery in 5 days</button>
+                            <button type="button" class="context-suggestion-btn" data-context="infection">🦠 Current infection</button>
+                            <button type="button" class="context-suggestion-btn" data-context="elderly">👴 Elderly patient (>75)</button>
+                            <button type="button" class="context-suggestion-btn" data-context="kidney">🫘 Kidney disease</button>
+                            <button type="button" class="context-suggestion-btn" data-context="pregnancy">🤱 Pregnant/breastfeeding</button>
+                            <button type="button" class="context-suggestion-btn" data-context="allergy">⚠️ Drug allergy history</button>
+                        </div>
+                    </div>
+                    <small class="input-hint">Add clinical context that may affect drug interactions - use voice input or quick suggestions</small>
+                </div>
+
                 <!-- Quick Upload Options for Drug Interactions -->
                 <div class="input-group">
                     <label>Quick Upload Prescription</label>
@@ -232,6 +263,89 @@
                 
                 <div class="result-content">
                     <div class="result-explanation"></div>
+                    
+                    <!-- Clinical Interaction Summary -->
+                    <div class="clinical-summary-cards" id="clinicalSummaryCards" style="display: none;">
+                        <div class="summary-card drug-disease-card">
+                            <div class="card-icon">📊</div>
+                            <div class="card-content">
+                                <h4>Drug-Disease</h4>
+                                <div class="card-count" id="drugDiseaseCount">0</div>
+                                <div class="card-detail" id="drugDiseaseDetail">No interactions</div>
+                            </div>
+                        </div>
+                        <div class="summary-card drug-food-card">
+                            <div class="card-icon">🍽️</div>
+                            <div class="card-content">
+                                <h4>Drug-Food</h4>
+                                <div class="card-count" id="drugFoodCount">0</div>
+                                <div class="card-detail" id="drugFoodDetail">No interactions</div>
+                            </div>
+                        </div>
+                        <div class="summary-card elderly-care-card">
+                            <div class="card-icon">👴</div>
+                            <div class="card-content">
+                                <h4>Elderly Care</h4>
+                                <div class="card-count" id="elderlyCount">0</div>
+                                <div class="card-detail" id="elderlyDetail">Age-appropriate</div>
+                            </div>
+                        </div>
+                        <div class="summary-card clinical-context-card">
+                            <div class="card-icon">🔪</div>
+                            <div class="card-content">
+                                <h4>Clinical Context</h4>
+                                <div class="card-count" id="contextCount">0</div>
+                                <div class="card-detail" id="contextDetail">No special considerations</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Expandable Detailed Sections -->
+                    <div class="detailed-sections" id="detailedSections" style="display: none;">
+                        <div class="expandable-section">
+                            <button class="section-toggle" data-target="drugDiseaseDetails">
+                                <svg class="toggle-icon" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/>
+                                </svg>
+                                Drug-Disease Interactions
+                                <span class="section-count"></span>
+                            </button>
+                            <div class="section-content" id="drugDiseaseDetails"></div>
+                        </div>
+
+                        <div class="expandable-section">
+                            <button class="section-toggle" data-target="drugFoodDetails">
+                                <svg class="toggle-icon" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/>
+                                </svg>
+                                Drug-Food Interactions
+                                <span class="section-count"></span>
+                            </button>
+                            <div class="section-content" id="drugFoodDetails"></div>
+                        </div>
+
+                        <div class="expandable-section">
+                            <button class="section-toggle" data-target="elderlyDetails">
+                                <svg class="toggle-icon" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/>
+                                </svg>
+                                Elderly Patient Considerations (Beers Criteria)
+                                <span class="section-count"></span>
+                            </button>
+                            <div class="section-content" id="elderlyDetails"></div>
+                        </div>
+
+                        <div class="expandable-section">
+                            <button class="section-toggle" data-target="contextDetails">
+                                <svg class="toggle-icon" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/>
+                                </svg>
+                                Clinical Context Recommendations
+                                <span class="section-count"></span>
+                            </button>
+                            <div class="section-content" id="contextDetails"></div>
+                        </div>
+                    </div>
                     
                     <div class="recommendations-section" style="display: none;">
                         <h3>Recommendations</h3>

@@ -2544,3 +2544,594 @@ body {
         padding: 0.75rem;
     }
 }
+
+/* Clinical Notes Styles */
+.clinical-notes-container {
+    position: relative;
+}
+
+.clinical-notes-container .input-with-mic {
+    position: relative;
+    width: 100%;
+}
+
+.clinical-notes-container textarea {
+    width: 100%;
+    min-height: 120px;
+    padding: 0.75rem 3.5rem 0.75rem 0.75rem;
+    border: 2px solid var(--border-color);
+    border-radius: 8px;
+    background: var(--surface);
+    color: var(--text-primary);
+    font-family: inherit;
+    font-size: 0.875rem;
+    line-height: 1.5;
+    resize: vertical;
+    transition: all 0.2s ease;
+}
+
+.clinical-notes-container textarea:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(0, 102, 255, 0.1);
+}
+
+.clinical-notes-container textarea::placeholder {
+    color: var(--text-muted);
+    line-height: 1.4;
+}
+
+.mic-btn-textarea {
+    position: absolute;
+    right: 0.75rem;
+    top: 0.75rem;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0.5rem;
+    border-radius: 6px;
+    color: #6b7280;
+    transition: all 0.3s ease;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.mic-btn-textarea:hover {
+    background: rgba(59, 130, 246, 0.1);
+    color: #3b82f6;
+}
+
+.mic-btn-textarea:active {
+    transform: scale(0.95);
+}
+
+.mic-btn-textarea.recording {
+    color: #ef4444;
+    background: rgba(239, 68, 68, 0.1);
+    animation: pulse-red 1.5s infinite;
+}
+
+.mic-btn-textarea.processing {
+    color: #f59e0b;
+    background: rgba(245, 158, 11, 0.1);
+    animation: spin 1s linear infinite;
+}
+
+.mic-btn-textarea.success {
+    color: #10b981;
+    background: rgba(16, 185, 129, 0.1);
+}
+
+.mic-btn-textarea .mic-icon {
+    width: 1.25rem;
+    height: 1.25rem;
+    pointer-events: none;
+}
+
+.clinical-context-suggestions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+    padding: 1rem;
+    background: var(--surface-light);
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+}
+
+.context-suggestion-btn {
+    background: var(--surface);
+    border: 1px solid var(--border-color);
+    border-radius: 20px;
+    padding: 0.5rem 1rem;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.context-suggestion-btn:hover {
+    background: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-sm);
+}
+
+/* Clinical Summary Cards */
+.clinical-summary-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin: 1.5rem 0;
+}
+
+.summary-card {
+    background: var(--surface);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    transition: all 0.2s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.summary-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.summary-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: var(--border-color);
+    transition: all 0.2s ease;
+}
+
+.drug-disease-card::before {
+    background: var(--gradient-danger);
+}
+
+.drug-food-card::before {
+    background: var(--gradient-warning);
+}
+
+.elderly-care-card::before {
+    background: var(--gradient-primary);
+}
+
+.clinical-context-card::before {
+    background: var(--gradient-success);
+}
+
+.summary-card .card-icon {
+    font-size: 1.5rem;
+    opacity: 0.8;
+}
+
+.summary-card .card-content {
+    flex: 1;
+}
+
+.summary-card h4 {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 0.25rem;
+}
+
+.card-count {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 0.25rem;
+}
+
+.card-detail {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+/* Expandable Sections */
+.detailed-sections {
+    margin-top: 2rem;
+}
+
+.expandable-section {
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    margin-bottom: 1rem;
+    overflow: hidden;
+    background: var(--surface);
+}
+
+.section-toggle {
+    width: 100%;
+    background: var(--surface-light);
+    border: none;
+    padding: 1rem 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: left;
+}
+
+.section-toggle:hover {
+    background: var(--primary-color);
+    color: white;
+}
+
+.section-toggle.expanded .toggle-icon {
+    transform: rotate(180deg);
+}
+
+.toggle-icon {
+    width: 20px;
+    height: 20px;
+    transition: transform 0.2s ease;
+    flex-shrink: 0;
+}
+
+.section-count {
+    background: var(--primary-color);
+    color: white;
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 12px;
+    margin-left: auto;
+    min-width: 20px;
+    text-align: center;
+}
+
+.section-content {
+    padding: 0;
+    max-height: 0;
+    overflow: hidden;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.section-content.expanded {
+    max-height: 500px;
+    padding: 1.25rem;
+}
+
+.section-content .interaction-item {
+    background: var(--surface-light);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 1rem;
+    margin-bottom: 0.75rem;
+}
+
+.section-content .interaction-item:last-child {
+    margin-bottom: 0;
+}
+
+.interaction-item h5 {
+    color: var(--text-primary);
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+.interaction-item .severity-badge {
+    display: inline-block;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+}
+
+.severity-major {
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--danger-color);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.severity-moderate {
+    background: rgba(245, 158, 11, 0.1);
+    color: var(--warning-color);
+    border: 1px solid rgba(245, 158, 11, 0.2);
+}
+
+.severity-minor {
+    background: rgba(16, 185, 129, 0.1);
+    color: var(--success-color);
+    border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+.interaction-item .mechanism {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    margin-bottom: 0.5rem;
+}
+
+.interaction-item .recommendation {
+    color: var(--text-primary);
+    font-size: 0.875rem;
+    font-weight: 500;
+    background: var(--surface);
+    padding: 0.75rem;
+    border-radius: 4px;
+    border-left: 3px solid var(--primary-color);
+}
+
+/* Mobile Responsive Styles for Clinical Notes */
+@media (max-width: 768px) {
+    .clinical-summary-cards {
+        grid-template-columns: 1fr 1fr;
+        gap: 0.75rem;
+    }
+    
+    .summary-card {
+        padding: 0.75rem;
+        gap: 0.5rem;
+    }
+    
+    .summary-card .card-icon {
+        font-size: 1.25rem;
+    }
+    
+    .card-count {
+        font-size: 1.25rem;
+    }
+    
+    .clinical-context-suggestions {
+        padding: 0.75rem;
+        gap: 0.375rem;
+    }
+    
+    .context-suggestion-btn {
+        padding: 0.375rem 0.75rem;
+        font-size: 0.75rem;
+    }
+    
+    .section-toggle {
+        padding: 0.75rem 1rem;
+        font-size: 0.875rem;
+    }
+    
+    .section-content.expanded {
+        padding: 1rem;
+    }
+}
+
+/* DailyMed Section Styles */
+.dailymed-section {
+    margin-top: 2rem;
+    padding: 1.5rem;
+    background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+}
+
+.dailymed-section .section-title {
+    color: var(--primary-dark);
+    font-size: 1.25rem;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid var(--primary-color);
+}
+
+.dailymed-drugs {
+    display: grid;
+    gap: 1.5rem;
+}
+
+.dailymed-drug-card {
+    background: white;
+    border-radius: 8px;
+    padding: 1.5rem;
+    box-shadow: var(--shadow-sm);
+    border: 1px solid #e5e7eb;
+}
+
+.dailymed-drug-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid #f3f4f6;
+}
+
+.dailymed-drug-header h4 {
+    color: var(--text-primary);
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin: 0;
+}
+
+.dailymed-source {
+    background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
+    color: white;
+    padding: 0.25rem 0.75rem;
+    border-radius: 16px;
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+.cache-indicator {
+    background: var(--success-color);
+    color: white;
+    padding: 0.25rem 0.5rem;
+    border-radius: 12px;
+    font-size: 0.7rem;
+    margin-left: 0.5rem;
+}
+
+.dailymed-drug-details {
+    display: grid;
+    gap: 1rem;
+}
+
+.dailymed-row {
+    display: flex;
+    align-items: flex-start;
+}
+
+.dailymed-field {
+    flex: 1;
+}
+
+.dailymed-field strong {
+    color: var(--text-primary);
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.dailymed-value {
+    margin-top: 0.25rem;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    line-height: 1.5;
+}
+
+.dosage-form {
+    display: inline-block;
+    background: var(--primary-light);
+    color: white;
+    padding: 0.2rem 0.5rem;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    margin-right: 0.5rem;
+    margin-bottom: 0.25rem;
+}
+
+.dailymed-alternatives {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid #f3f4f6;
+}
+
+.alternatives-list {
+    margin-top: 0.5rem;
+}
+
+.alternative-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem;
+    background: #f9fafb;
+    border-radius: 6px;
+    margin-bottom: 0.5rem;
+}
+
+.alternative-title {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    flex: 1;
+    margin-right: 1rem;
+}
+
+.alternative-date {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    white-space: nowrap;
+}
+
+.more-alternatives {
+    font-size: 0.8rem;
+    color: var(--primary-color);
+    text-align: center;
+    padding: 0.5rem;
+    background: #f0f9ff;
+    border-radius: 6px;
+    font-weight: 500;
+}
+
+.dailymed-note {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid #f3f4f6;
+}
+
+.dailymed-note em {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+}
+
+/* Enhanced Clinical Decision Support Styles */
+.dailymed-clinical-insights {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid #f3f4f6;
+}
+
+.clinical-insights-list {
+    margin-top: 0.5rem;
+    display: grid;
+    gap: 0.5rem;
+}
+
+.clinical-insight {
+    display: flex;
+    align-items: center;
+    padding: 0.75rem;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    border-left: 4px solid transparent;
+}
+
+.clinical-insight.warning {
+    background: #fef2f2;
+    color: #991b1b;
+    border-left-color: #ef4444;
+}
+
+.clinical-insight.caution {
+    background: #fffbeb;
+    color: #92400e;
+    border-left-color: #f59e0b;
+}
+
+.clinical-insight.info {
+    background: #eff6ff;
+    color: #1e40af;
+    border-left-color: #3b82f6;
+}
+
+.insight-icon {
+    margin-right: 0.5rem;
+    font-size: 1rem;
+}
+
+.insight-message {
+    flex: 1;
+    font-weight: 500;
+}
+
+.dailymed-formulation-guidance {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid #f3f4f6;
+}
+
+.formulation-guidance-list {
+    margin-top: 0.5rem;
+}
+
+.formulation-guidance-item {
+    padding: 0.5rem;
+    background: #f0f9ff;
+    color: #1e40af;
+    border-radius: 6px;
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+}
